@@ -426,30 +426,99 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── 8. Fire n8n webhook ───────────────────────────────────────────────
+    // ── 8. Send notification email + fire n8n webhook ─────────────────────
+    const payload = {
+      id: data[0].id,
+      client_name: formDataObj.name,
+      client_email: formDataObj.email,
+      client_phone: formDataObj.phone,
+      budget: formDataObj.constructionBudget,
+      stories: formDataObj.stories,
+      aesthetic_style: formDataObj.aestheticStyle,
+      living_sf: formDataObj.living,
+      bedrooms: formDataObj.bedrooms,
+      bathrooms: formDataObj.bathrooms,
+      desired_rooms: formDataObj.desiredRooms,
+      roof_style: formDataObj.roofStyle,
+      ceiling_height: formDataObj.ceilingHeight,
+      vision_analysis: visionAnalysis,
+      image_count: uploadedImages.length,
+      submitted_at: new Date().toISOString()
+    };
+
+    // Send Gmail notification using OAuth refresh token
+    const sendGmailNotification = async () => {
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+      const notifyEmail = 'mitchell@empowerbuilding.ai';
+      if (!clientId || !clientSecret || !refreshToken) return;
+
+      try {
+        // Get fresh access token
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, grant_type: 'refresh_token' })
+        });
+        const tokenData = await tokenRes.json() as { access_token?: string };
+        if (!tokenData.access_token) return;
+
+        const rooms = Object.entries((formDataObj.desiredRooms as Record<string,boolean>) || {})
+          .filter(([,v]) => v).map(([k]) => k.replace(/([A-Z])/g, ' $1').trim()).join(', ') || 'None';
+        const style = (formDataObj.aestheticStyle as string || 'Not specified').replace(/-/g, ' ');
+        const visionText = visionAnalysis.length > 0
+          ? (visionAnalysis as Record<string,unknown>[]).map(v => `- ${v.image}: ${v.style || ''} | Materials: ${(v.materials as string[] || []).join(', ')}`).join('\n')
+          : 'No images uploaded';
+        const shortId = (data[0].id as string).substring(0, 8);
+
+        const emailBody = [
+          `To: ${notifyEmail}`,
+          `From: ${notifyEmail}`,
+          `Subject: New Barnhaus Design Intake - ${formDataObj.name}`,
+          `Content-Type: text/plain; charset=utf-8`,
+          ``,
+          `New design intake from ${formDataObj.name}`,
+          ``,
+          `CLIENT`,
+          `Name: ${formDataObj.name}`,
+          `Email: ${formDataObj.email}`,
+          `Phone: ${formDataObj.phone}`,
+          `Budget: ${formDataObj.constructionBudget}`,
+          ``,
+          `PROJECT`,
+          `Stories: ${formDataObj.stories === 'two' ? 'Two Story' : 'Single Story'}`,
+          `Style: ${style}`,
+          `Living SF: ${formDataObj.living} | Garage: ${formDataObj.garage} | Patio: ${formDataObj.patios}`,
+          `Bedrooms: ${formDataObj.bedrooms} | Bathrooms: ${formDataObj.bathrooms}`,
+          `Roof: ${formDataObj.roofStyle} | Ceiling: ${formDataObj.ceilingHeight}ft`,
+          `Special Rooms: ${rooms}`,
+          ``,
+          `AI VISION (${uploadedImages.length} images)`,
+          visionText,
+          ``,
+          `Submission ID: ${data[0].id}`,
+          `Reply "start revit ${shortId}" to begin the Revit model.`
+        ].join('\n');
+
+        const encoded = Buffer.from(emailBody).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+        await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${tokenData.access_token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw: encoded })
+        });
+      } catch (e) {
+        console.error('Gmail notification failed:', e);
+      }
+    };
+    sendGmailNotification();
+
     const webhookUrl = process.env.NOTIFICATION_WEBHOOK_URL;
     if (webhookUrl) {
       fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: data[0].id,
-          client_name: formDataObj.name,
-          client_email: formDataObj.email,
-          client_phone: formDataObj.phone,
-          budget: formDataObj.constructionBudget,
-          stories: formDataObj.stories,
-          aesthetic_style: formDataObj.aestheticStyle,
-          living_sf: formDataObj.living,
-          bedrooms: formDataObj.bedrooms,
-          bathrooms: formDataObj.bathrooms,
-          desired_rooms: formDataObj.desiredRooms,
-          roof_style: formDataObj.roofStyle,
-          ceiling_height: formDataObj.ceilingHeight,
-          vision_analysis: visionAnalysis,
-          image_count: uploadedImages.length,
-          submitted_at: new Date().toISOString()
-        })
+        body: JSON.stringify(payload)
       }).catch(e => console.error('Webhook failed:', e));
     }
 
