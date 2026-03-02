@@ -365,7 +365,7 @@ export async function POST(request: Request) {
     }
 
     // ── 6. Run vision analysis on uploaded images ─────────────────────────
-    const visionAnalysis = [];
+    const visionAnalysis: Record<string, unknown>[] = [];
     for (const img of uploadedImages) {
       const analysis = await analyzeImageWithVision(img.url);
       visionAnalysis.push({ image: img.name, url: img.url, ...analysis });
