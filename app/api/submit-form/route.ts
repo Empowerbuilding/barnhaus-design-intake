@@ -154,11 +154,39 @@ let _supabase: SupabaseClient<any, 'public', any> | null = null;
 
 function getSupabase() {
   if (!_supabase) {
-    const supabaseUrl = process.env.SUPABASE_URL as string;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL) as string;
+    const supabaseKey = (process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY) as string;
     _supabase = createClient(supabaseUrl, supabaseKey);
   }
   return _supabase;
+}
+
+async function analyzeImageWithVision(imageUrl: string): Promise<Record<string, unknown>> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return {};
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        max_tokens: 500,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Analyze this architectural inspiration image. Return ONLY a JSON object with keys: style (string), materials (string array), architectural_features (string array), color_palette (string), standout_elements (string array). No markdown, just raw JSON.' },
+            { type: 'image_url', image_url: { url: imageUrl } }
+          ]
+        }]
+      })
+    });
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content || '{}';
+    return JSON.parse(content.replace(/```json\n?|\n?```/g, '').trim());
+  } catch (e) {
+    console.error('Vision analysis failed:', e);
+    return {};
+  }
 }
 
 async function uploadFileToSupabase(file: File, fileName: string) {
@@ -336,7 +364,14 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── 6. Save to database ───────────────────────────────────────────────
+    // ── 6. Run vision analysis on uploaded images ─────────────────────────
+    const visionAnalysis = [];
+    for (const img of uploadedImages) {
+      const analysis = await analyzeImageWithVision(img.url);
+      visionAnalysis.push({ image: img.name, url: img.url, ...analysis });
+    }
+
+    // ── 7. Save to database ───────────────────────────────────────────────
     const { data, error } = await getSupabase()
       .from('construction_submissions')
       .insert([
@@ -374,6 +409,10 @@ export async function POST(request: Request) {
           unwanted_items: formDataObj.unwantedItems,
           pinterest_link: formDataObj.pinterestLink,
           inspiration_images: uploadedImages,
+          vision_analysis: visionAnalysis,
+          stories: formDataObj.stories,
+          aesthetic_style: formDataObj.aestheticStyle,
+          aesthetic_style_custom: formDataObj.aestheticStyleCustom,
           submitted_at: new Date().toISOString()
         }
       ])
@@ -385,6 +424,33 @@ export async function POST(request: Request) {
         { success: false, message: 'Failed to save form data' },
         { status: 500 }
       );
+    }
+
+    // ── 8. Fire n8n webhook ───────────────────────────────────────────────
+    const webhookUrl = process.env.NOTIFICATION_WEBHOOK_URL;
+    if (webhookUrl) {
+      fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: data[0].id,
+          client_name: formDataObj.name,
+          client_email: formDataObj.email,
+          client_phone: formDataObj.phone,
+          budget: formDataObj.constructionBudget,
+          stories: formDataObj.stories,
+          aesthetic_style: formDataObj.aestheticStyle,
+          living_sf: formDataObj.living,
+          bedrooms: formDataObj.bedrooms,
+          bathrooms: formDataObj.bathrooms,
+          desired_rooms: formDataObj.desiredRooms,
+          roof_style: formDataObj.roofStyle,
+          ceiling_height: formDataObj.ceilingHeight,
+          vision_analysis: visionAnalysis,
+          image_count: uploadedImages.length,
+          submitted_at: new Date().toISOString()
+        })
+      }).catch(e => console.error('Webhook failed:', e));
     }
 
     return NextResponse.json({
