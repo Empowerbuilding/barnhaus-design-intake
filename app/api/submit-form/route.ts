@@ -373,7 +373,7 @@ export async function POST(request: Request) {
 
     // ── 7. Save to database ───────────────────────────────────────────────
     const { data, error } = await getSupabase()
-      .from('construction_submissions')
+      .from('design_intake_submissions')
       .insert([
         {
           name: formDataObj.name,
@@ -409,7 +409,12 @@ export async function POST(request: Request) {
           unwanted_items: formDataObj.unwantedItems,
           pinterest_link: formDataObj.pinterestLink,
           inspiration_images: uploadedImages,
-          submitted_at: new Date().toISOString()
+          vision_analysis: visionAnalysis,
+          stories: formDataObj.stories,
+          aesthetic_style: formDataObj.aestheticStyle,
+          aesthetic_style_custom: formDataObj.aestheticStyleCustom,
+          submitted_at: new Date().toISOString(),
+          status: 'new'
         }
       ])
       .select();
@@ -421,15 +426,6 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
-
-    // ── 8. Update with extra fields (added later, may not exist in all envs) ─
-    void getSupabase().from('construction_submissions').update({
-      vision_analysis: visionAnalysis,
-      stories: formDataObj.stories,
-      aesthetic_style: formDataObj.aestheticStyle,
-      aesthetic_style_custom: formDataObj.aestheticStyleCustom,
-      status: 'new'
-    }).eq('id', data[0].id);
 
     // ── 9. Send notification email + fire n8n webhook ─────────────────────
     const payload = {
