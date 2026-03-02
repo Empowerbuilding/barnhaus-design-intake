@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { FormField, TextInput, RadioGroup, CheckboxGroup } from './FormComponents';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 interface ImageUploadProps {
@@ -88,7 +88,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onImagesChange, maxImages = 5
           </div>
         ))}
         {previewUrls.length < maxImages && (
-          <label className="border-2 border-dashed border-gray-300 rounded-lg aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50">
+          <label className="border-2 border-dashed border-gray-300 rounded-lg aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-[#D4A843] hover:bg-amber-50">
             <Upload className="w-8 h-8 text-gray-400" />
             <span className="mt-2 text-sm text-gray-500">Upload Image</span>
             <input
@@ -109,7 +109,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onImagesChange, maxImages = 5
 };
 
 interface FormData {
-  // Your existing interface remains exactly the same
   name: string;
   email: string;
   phone: string;
@@ -118,6 +117,9 @@ interface FormData {
   hasSurvey: string;
   hasSlope: string;
   padDirection: string;
+  stories: string;
+  aestheticStyle: string;
+  aestheticStyleCustom: string;
   living: string;
   patios: string;
   garage: string;
@@ -160,6 +162,9 @@ const ConstructionForm = () => {
     hasSurvey: 'yes',
     hasSlope: 'yes',
     padDirection: '',
+    stories: 'single',
+    aestheticStyle: '',
+    aestheticStyleCustom: '',
     living: '',
     patios: '',
     garage: '',
@@ -174,7 +179,17 @@ const ConstructionForm = () => {
       jackAndJillBathroom: false,
       formalLivingRoom: false,
       formalDiningRoom: false,
-      masterSeatingSpace: false
+      masterSeatingSpace: false,
+      golfSimulator: false,
+      barWetBar: false,
+      wineRoom: false,
+      mediaRoom: false,
+      salon: false,
+      mudroom: false,
+      bonusRoom: false,
+      gameRoom: false,
+      safeRoom: false,
+      workshop: false
     },
     roofStyle: 'gable',
     ceilingHeight: '9',
@@ -341,6 +356,9 @@ const ConstructionForm = () => {
         hasSurvey: 'yes',
         hasSlope: 'yes',
         padDirection: '',
+        stories: 'single',
+        aestheticStyle: '',
+        aestheticStyleCustom: '',
         living: '',
         patios: '',
         garage: '',
@@ -355,7 +373,17 @@ const ConstructionForm = () => {
           jackAndJillBathroom: false,
           formalLivingRoom: false,
           formalDiningRoom: false,
-          masterSeatingSpace: false
+          masterSeatingSpace: false,
+          golfSimulator: false,
+          barWetBar: false,
+          wineRoom: false,
+          mediaRoom: false,
+          salon: false,
+          mudroom: false,
+          bonusRoom: false,
+          gameRoom: false,
+          safeRoom: false,
+          workshop: false
         },
         roofStyle: 'gable',
         ceilingHeight: '9',
@@ -516,6 +544,55 @@ const ConstructionForm = () => {
           onChange={handleInputChange}
           placeholder="Type here..."
         />
+      </FormField>
+
+      <FormField label="Single Story or Two Story?">
+        <RadioGroup
+          name="stories"
+          options={[
+            { label: 'Single Story', value: 'single' },
+            { label: 'Two Story', value: 'two' }
+          ]}
+          value={formData.stories}
+          onChange={handleInputChange}
+        />
+      </FormField>
+
+      <FormField label="Aesthetic Style">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {[
+            { value: 'modern-desert', label: 'Modern Desert', desc: 'Dark steel, warm earth tones, low slope' },
+            { value: 'scandinavian', label: 'Scandinavian Modern', desc: 'Dark siding, wood accents, glass gables' },
+            { value: 'barndominium', label: 'Contemporary Barndominium', desc: 'Metal exterior, open concept, industrial' },
+            { value: 'hill-country', label: 'Hill Country Modern', desc: 'Limestone, metal roof, Texas ranch' },
+            { value: 'industrial', label: 'Industrial Modern', desc: 'Exposed steel, concrete, large windows' },
+            { value: 'custom', label: 'Custom / Mixed', desc: 'Describe your vision below' },
+          ].map(style => (
+            <button
+              key={style.value}
+              type="button"
+              onClick={() => setFormData(prev => ({ ...prev, aestheticStyle: style.value }))}
+              className={`p-3 rounded-lg border-2 text-left transition-all ${
+                formData.aestheticStyle === style.value
+                  ? 'border-[#D4A843] bg-amber-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="font-medium text-sm text-gray-900">{style.label}</div>
+              <div className="text-xs text-gray-500 mt-1">{style.desc}</div>
+            </button>
+          ))}
+        </div>
+        {formData.aestheticStyle === 'custom' && (
+          <textarea
+            name="aestheticStyleCustom"
+            className="mt-3 w-full p-3 border rounded-lg text-gray-900 text-sm"
+            rows={3}
+            value={formData.aestheticStyleCustom}
+            onChange={handleInputChange}
+            placeholder="Describe your ideal aesthetic..."
+          />
+        )}
       </FormField>
     </div>
   );
@@ -797,7 +874,7 @@ const ConstructionForm = () => {
       <FormField label="Additional Requests">
         <textarea
           name="additionalRequests"
-          className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+          className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-[#D4A843] focus:border-[#D4A843] text-gray-900 placeholder-gray-500"
           rows={4}
           value={formData.additionalRequests}
           onChange={handleInputChange}
@@ -812,7 +889,7 @@ const ConstructionForm = () => {
     <FormField label="Are there any items or spaces that you would like in your new home that were not covered in this predesign form?">
       <textarea
         name="additionalItems"
-        className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+        className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-[#D4A843] focus:border-[#D4A843] text-gray-900 placeholder-gray-500"
         rows={4}
         value={formData.additionalItems}
         onChange={handleInputChange}
@@ -823,7 +900,7 @@ const ConstructionForm = () => {
     <FormField label="Are there any specific items that you DO NOT WANT in your new home?">
       <textarea
         name="unwantedItems"
-        className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+        className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-[#D4A843] focus:border-[#D4A843] text-gray-900 placeholder-gray-500"
         rows={4}
         value={formData.unwantedItems}
         onChange={handleInputChange}
@@ -858,9 +935,10 @@ const ConstructionForm = () => {
       </FormField>
 
       <FormField label="Upload Inspiration Images">
+        <p className="text-sm text-gray-600 mb-3">Upload photos of homes, interiors, or details that inspire you. Our AI will analyze these to understand your vision.</p>
         <ImageUpload
           onImagesChange={(images) => setFormData(prev => ({ ...prev, inspirationImages: images }))}
-          maxImages={5}
+          maxImages={10}
         />
       </FormField>
     </div>
@@ -929,7 +1007,7 @@ const ConstructionForm = () => {
             </div>
             <div className="mt-4 h-1.5 bg-gray-700 rounded-full">
               <div 
-                className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                className="h-full bg-[#D4A843] rounded-full transition-all duration-300"
                 style={{ width: `${(currentStep / 5) * 100}%` }}
               />
             </div>
@@ -972,7 +1050,7 @@ const ConstructionForm = () => {
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="px-5 py-2.5 bg-blue-500 text-white rounded-full text-sm font-medium hover:bg-blue-600 transition-colors ml-auto"
+                    className="px-5 py-2.5 bg-[#D4A843] text-black rounded-full text-sm font-medium hover:bg-amber-500 transition-colors ml-auto"
                   >
                     Next
                   </button>
