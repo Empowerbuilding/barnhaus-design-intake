@@ -423,13 +423,13 @@ export async function POST(request: Request) {
     }
 
     // ── 8. Update with extra fields (added later, may not exist in all envs) ─
-    getSupabase().from('construction_submissions').update({
+    void getSupabase().from('construction_submissions').update({
       vision_analysis: visionAnalysis,
       stories: formDataObj.stories,
       aesthetic_style: formDataObj.aestheticStyle,
       aesthetic_style_custom: formDataObj.aestheticStyleCustom,
       status: 'new'
-    }).eq('id', data[0].id).then(() => {}).catch(() => {});
+    }).eq('id', data[0].id);
 
     // ── 9. Send notification email + fire n8n webhook ─────────────────────
     const payload = {
