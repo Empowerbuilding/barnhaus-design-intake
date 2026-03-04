@@ -10,27 +10,36 @@ interface FormDataObject {
   hasSurvey: string;
   hasSlope: string;
   padDirection: string;
+  stories: string;
+  aestheticStyle: string;
+  aestheticStyleCustom: string;
   living: string;
   patios: string;
-  garage: string;
+  footprintPreset: string;
+  footprintWidth: string;
+  footprintDepth: string;
+  garageCars: string;
+  garageType: string;
+  garageLoad: string;
+  masterLocation: string;
+  l2Scope: string;
   bedrooms: string;
-  bathrooms: string;
+  fullBaths: string;
+  halfBaths: string;
   desiredRooms: Record<string, boolean>;
-  roofStyle: string;
-  ceilingHeight: string;
   kitchenFeatures: Record<string, boolean>;
   masterBathroom: Record<string, boolean>;
   masterCloset: Record<string, boolean>;
-  countertopFinishes: Record<string, boolean>;
-  flooringFinishes: Record<string, boolean>;
+  roofStyle: string;
+  roofPitch: string;
+  greatRoomVaulted: string;
+  secondaryCeilingHeight: string;
+  masterCeilingHeight: string;
   fireplace: string;
   fireplaceType: Record<string, boolean>;
   porchLocations: Record<string, boolean>;
   patiosCovered: string;
-  patioCeilingMaterial: string;
-  waterHeater: string;
-  insulationType: Record<string, boolean>;
-  additionalRequests: string;
+  rearPatioDepth: string;
   additionalItems: string;
   unwantedItems: string;
   pinterestLink: string;
@@ -384,35 +393,41 @@ export async function POST(request: Request) {
           has_survey: formDataObj.hasSurvey,
           has_slope: formDataObj.hasSlope,
           pad_direction: formDataObj.padDirection,
+          stories: formDataObj.stories,
+          aesthetic_style: formDataObj.aestheticStyle,
+          aesthetic_style_custom: formDataObj.aestheticStyleCustom,
           living: formDataObj.living,
           patios: formDataObj.patios,
-          garage: formDataObj.garage,
+          footprint_preset: formDataObj.footprintPreset,
+          footprint_width: formDataObj.footprintWidth,
+          footprint_depth: formDataObj.footprintDepth,
+          garage_cars: formDataObj.garageCars,
+          garage_type: formDataObj.garageType,
+          garage_load: formDataObj.garageLoad,
+          master_location: formDataObj.masterLocation,
+          l2_scope: formDataObj.l2Scope,
           bedrooms: formDataObj.bedrooms,
-          bathrooms: formDataObj.bathrooms,
+          full_baths: formDataObj.fullBaths,
+          half_baths: formDataObj.halfBaths,
           desired_rooms: formDataObj.desiredRooms,
-          roof_style: formDataObj.roofStyle,
-          ceiling_height: formDataObj.ceilingHeight,
           kitchen_features: formDataObj.kitchenFeatures,
           master_bathroom: formDataObj.masterBathroom,
           master_closet: formDataObj.masterCloset,
-          countertop_finishes: formDataObj.countertopFinishes,
-          flooring_finishes: formDataObj.flooringFinishes,
+          roof_style: formDataObj.roofStyle,
+          roof_pitch: formDataObj.roofPitch,
+          great_room_vaulted: formDataObj.greatRoomVaulted === 'yes',
+          secondary_ceiling_height: formDataObj.secondaryCeilingHeight,
+          master_ceiling_height: formDataObj.masterCeilingHeight,
           fireplace: formDataObj.fireplace,
           fireplace_type: formDataObj.fireplaceType,
           porch_locations: formDataObj.porchLocations,
           patios_covered: formDataObj.patiosCovered,
-          patio_ceiling_material: formDataObj.patioCeilingMaterial,
-          water_heater: formDataObj.waterHeater,
-          insulation_type: formDataObj.insulationType,
-          additional_requests: formDataObj.additionalRequests,
+          rear_patio_depth: formDataObj.rearPatioDepth,
           additional_items: formDataObj.additionalItems,
           unwanted_items: formDataObj.unwantedItems,
           pinterest_link: formDataObj.pinterestLink,
           inspiration_images: uploadedImages,
           vision_analysis: visionAnalysis,
-          stories: formDataObj.stories,
-          aesthetic_style: formDataObj.aestheticStyle,
-          aesthetic_style_custom: formDataObj.aestheticStyleCustom,
           submitted_at: new Date().toISOString(),
           status: 'new'
         }
@@ -438,10 +453,16 @@ export async function POST(request: Request) {
       aesthetic_style: formDataObj.aestheticStyle,
       living_sf: formDataObj.living,
       bedrooms: formDataObj.bedrooms,
-      bathrooms: formDataObj.bathrooms,
+      full_baths: formDataObj.fullBaths,
+      half_baths: formDataObj.halfBaths,
+      garage_cars: formDataObj.garageCars,
+      garage_type: formDataObj.garageType,
+      footprint_preset: formDataObj.footprintPreset,
       desired_rooms: formDataObj.desiredRooms,
       roof_style: formDataObj.roofStyle,
-      ceiling_height: formDataObj.ceilingHeight,
+      roof_pitch: formDataObj.roofPitch,
+      master_ceiling_height: formDataObj.masterCeilingHeight,
+      secondary_ceiling_height: formDataObj.secondaryCeilingHeight,
       vision_analysis: visionAnalysis,
       image_count: uploadedImages.length,
       submitted_at: new Date().toISOString()
@@ -476,10 +497,10 @@ export async function POST(request: Request) {
         const emailBody = [
           `To: ${notifyEmail}`,
           `From: ${notifyEmail}`,
-          `Subject: New Barnhaus Design Intake - ${formDataObj.name}`,
+          `Subject: New Design Brief - ${formDataObj.name}`,
           `Content-Type: text/plain; charset=utf-8`,
           ``,
-          `New design intake from ${formDataObj.name}`,
+          `New design brief from ${formDataObj.name}`,
           ``,
           `CLIENT`,
           `Name: ${formDataObj.name}`,
@@ -490,9 +511,14 @@ export async function POST(request: Request) {
           `PROJECT`,
           `Stories: ${formDataObj.stories === 'two' ? 'Two Story' : 'Single Story'}`,
           `Style: ${style}`,
-          `Living SF: ${formDataObj.living} | Garage: ${formDataObj.garage} | Patio: ${formDataObj.patios}`,
-          `Bedrooms: ${formDataObj.bedrooms} | Bathrooms: ${formDataObj.bathrooms}`,
-          `Roof: ${formDataObj.roofStyle} | Ceiling: ${formDataObj.ceilingHeight}ft`,
+          `Living SF: ${formDataObj.living} | Patio SF: ${formDataObj.patios}`,
+          `Footprint: ${formDataObj.footprintPreset || 'Not specified'}${formDataObj.footprintPreset === 'custom' ? ` (${formDataObj.footprintWidth}x${formDataObj.footprintDepth})` : ''}`,
+          `Garage: ${formDataObj.garageCars} cars, ${formDataObj.garageType}, ${formDataObj.garageLoad}`,
+          `Master Location: ${formDataObj.masterLocation || 'Not specified'}`,
+          `Bedrooms: ${formDataObj.bedrooms} | Full Baths: ${formDataObj.fullBaths} | Half Baths: ${formDataObj.halfBaths}`,
+          `Roof: ${formDataObj.roofStyle} @ ${formDataObj.roofPitch}`,
+          `Ceilings: Secondary ${formDataObj.secondaryCeilingHeight}ft | Master ${formDataObj.masterCeilingHeight}ft`,
+          `Great Room Vaulted: ${formDataObj.greatRoomVaulted || 'Not specified'}`,
           `Special Rooms: ${rooms}`,
           ``,
           `AI VISION (${uploadedImages.length} images)`,
@@ -525,7 +551,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Form submitted successfully! Your submission has been saved.',
+      message: 'Design brief submitted successfully!',
       id: data[0].id,
       images: uploadedImages.length
     });

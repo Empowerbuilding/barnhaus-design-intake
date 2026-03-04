@@ -15,7 +15,7 @@ interface ImageUploadProps {
   maxImages?: number;
 }
 
-const ImageUpload: React.FC<ImageUploadProps> = ({ onImagesChange, maxImages = 5 }) => {
+const ImageUpload: React.FC<ImageUploadProps> = ({ onImagesChange, maxImages = 10 }) => {
   const [previewUrls, setPreviewUrls] = useState<{ file: File; url: string }[]>([]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,7 +75,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onImagesChange, maxImages = 5
                 className="object-cover rounded-lg"
                 fill
                 sizes="(max-width: 768px) 50vw, 33vw"
-                unoptimized // Add this since we're using object URLs
+                unoptimized
               />
             </div>
             <button
@@ -102,13 +102,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onImagesChange, maxImages = 5
         )}
       </div>
       <p className="text-sm text-gray-500">
-        Upload up to {maxImages} images of your inspiration or specific details you'd like to include
+        Upload up to {maxImages} inspiration images (exteriors, interiors, floor plans)
       </p>
     </div>
   );
 };
 
 interface FormData {
+  // Step 1 — About You
   name: string;
   email: string;
   phone: string;
@@ -117,191 +118,175 @@ interface FormData {
   hasSurvey: string;
   hasSlope: string;
   padDirection: string;
+  // Step 2 — The Build
   stories: string;
   aestheticStyle: string;
   aestheticStyleCustom: string;
   living: string;
   patios: string;
-  garage: string;
+  footprintPreset: string;
+  footprintWidth: string;
+  footprintDepth: string;
+  garageCars: string;
+  garageType: string;
+  garageLoad: string;
+  masterLocation: string;
+  l2Scope: string;
+  // Step 3 — Rooms
   bedrooms: string;
-  bathrooms: string;
+  fullBaths: string;
+  halfBaths: string;
   desiredRooms: Record<string, boolean>;
-  roofStyle: string;
-  ceilingHeight: string;
   kitchenFeatures: Record<string, boolean>;
   masterBathroom: Record<string, boolean>;
   masterCloset: Record<string, boolean>;
-  countertopFinishes: Record<string, boolean>;
-  flooringFinishes: Record<string, boolean>;
+  // Step 4 — Architecture
+  roofStyle: string;
+  roofPitch: string;
+  greatRoomVaulted: string;
+  secondaryCeilingHeight: string;
+  masterCeilingHeight: string;
   fireplace: string;
   fireplaceType: Record<string, boolean>;
   porchLocations: Record<string, boolean>;
   patiosCovered: string;
-  patioCeilingMaterial: string;
-  waterHeater: string;
-  insulationType: Record<string, boolean>;
-  additionalRequests: string;
+  rearPatioDepth: string;
+  // Step 5 — Inspiration
   additionalItems: string;
   unwantedItems: string;
   pinterestLink: string;
   inspirationImages: File[];
 }
 
+const INITIAL_FORM_DATA: FormData = {
+  name: '',
+  email: '',
+  phone: '',
+  constructionBudget: '',
+  propertyAddress: '',
+  hasSurvey: '',
+  hasSlope: '',
+  padDirection: '',
+  stories: 'single',
+  aestheticStyle: '',
+  aestheticStyleCustom: '',
+  living: '',
+  patios: '',
+  footprintPreset: '',
+  footprintWidth: '',
+  footprintDepth: '',
+  garageCars: '2',
+  garageType: 'attached',
+  garageLoad: 'front-load',
+  masterLocation: '',
+  l2Scope: '',
+  bedrooms: '',
+  fullBaths: '',
+  halfBaths: '',
+  desiredRooms: {
+    greatRoom: false,
+    eatInKitchen: false,
+    laundryRoom: false,
+    officeStudy: false,
+    golfSimulator: false,
+    barWetBar: false,
+    wineRoom: false,
+    mediaRoom: false,
+    salon: false,
+    mudroom: false,
+    bonusRoom: false,
+    gameRoom: false,
+    safeRoom: false,
+    workshop: false,
+    masterSeatingSpace: false,
+  },
+  kitchenFeatures: {
+    butlerPantry: false,
+    cornerPantry: false,
+    kitchenIsland: false,
+    breakfastBar: false,
+  },
+  masterBathroom: {
+    walkInShower: false,
+    customShowerSeat: false,
+    shampooNiche: false,
+    freestandingBathtub: false,
+    makeupVanitySpace: false,
+    chandelier: false,
+  },
+  masterCloset: {
+    hisAndHerSpaces: false,
+    oneLargeSpace: false,
+    connectedToMasterBedroom: false,
+    accessFromMasterBathroom: false,
+    builtInDrawersAndShelving: false,
+  },
+  roofStyle: 'gable',
+  roofPitch: '3:12',
+  greatRoomVaulted: '',
+  secondaryCeilingHeight: '10',
+  masterCeilingHeight: '10',
+  fireplace: '',
+  fireplaceType: {
+    woodBurning: false,
+    electric: false,
+    gasPropane: false,
+  },
+  porchLocations: {
+    frontPorch: false,
+    rearPorch: false,
+    sidePorch: false,
+  },
+  patiosCovered: '',
+  rearPatioDepth: '',
+  additionalItems: '',
+  unwantedItems: '',
+  pinterestLink: '',
+  inspirationImages: [],
+};
+
+const STEP_LABELS = ['About You', 'The Build', 'Rooms', 'Architecture', 'Inspiration'];
+
 const ConstructionForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const formLoadedAt = useRef(Date.now());
   const [honeypot, setHoneypot] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
-    // Your existing initial state remains exactly the same
-    name: '',
-    email: '',
-    phone: '',
-    constructionBudget: '',
-    propertyAddress: '',
-    hasSurvey: 'yes',
-    hasSlope: 'yes',
-    padDirection: '',
-    stories: 'single',
-    aestheticStyle: '',
-    aestheticStyleCustom: '',
-    living: '',
-    patios: '',
-    garage: '',
-    bedrooms: '',
-    bathrooms: '',
-    desiredRooms: {
-      greatRoom: false,
-      eatInKitchen: false,
-      breakfastNook: false,
-      laundryRoom: false,
-      officeStudy: false,
-      jackAndJillBathroom: false,
-      formalLivingRoom: false,
-      formalDiningRoom: false,
-      masterSeatingSpace: false,
-      golfSimulator: false,
-      barWetBar: false,
-      wineRoom: false,
-      mediaRoom: false,
-      salon: false,
-      mudroom: false,
-      bonusRoom: false,
-      gameRoom: false,
-      safeRoom: false,
-      workshop: false
-    },
-    roofStyle: 'gable',
-    ceilingHeight: '9',
-    kitchenFeatures: {
-      butlerPantry: false,
-      cornerPantry: false,
-      kitchenIsland: false,
-      galleryKitchen: false,
-      lShapedKitchen: false,
-      uShapedKitchen: false,
-      breakfastBar: false
-    },
-    masterBathroom: {
-      walkInShower: false,
-      butlerPantry: false,
-      customShowerSeat: false,
-      shampooNiche: false,
-      freestandingBathtub: false,
-      makeupVanitySpace: false,
-      chandelier: false
-    },
-    masterCloset: {
-      hisAndHerSpaces: false,
-      oneLargeSpace: false,
-      connectedToMasterBedroom: false,
-      accessFromMasterBathroom: false,
-      builtInDrawersAndShelving: false
-    },
-    countertopFinishes: {
-      granite: false,
-      marble: false,
-      quartz: false,
-      laminate: false,
-      tile: false
-    },
-    flooringFinishes: {
-      ceramicTile: false,
-      stainedConcrete: false,
-      woodFlooring: false,
-      vinylFlooring: false,
-      carpet: false
-    },
-    fireplace: 'yes',
-    fireplaceType: {
-      woodBurning: false,
-      electric: false,
-      gasPropane: false
-    },
-    porchLocations: {
-      frontPorch: false,
-      rearPorch: false,
-      sidePorch: false
-    },
-    patiosCovered: 'yes',
-    patioCeilingMaterial: '',
-    waterHeater: 'tank',
-    insulationType: {
-      sprayFoam: false,
-      vinylBacked: false,
-      batt: false,
-      looseFillAndBlowIn: false
-    },
-    additionalRequests: '',
-    additionalItems: '',
-    unwantedItems: '',
-    pinterestLink: '',
-    inspirationImages: []
-  });
+  const [formData, setFormData] = useState<FormData>({ ...INITIAL_FORM_DATA });
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prevState => ({
-      ...prevState,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleCheckboxChange = (section: string, field: string) => {
-    setFormData(prevState => ({
-      ...prevState,
+    setFormData(prev => ({
+      ...prev,
       [section]: {
-        ...(prevState[section as keyof typeof prevState] as Record<string, boolean>),
-        [field]: !(prevState[section as keyof typeof prevState] as Record<string, boolean>)[field]
-      }
+        ...(prev[section as keyof typeof prev] as Record<string, boolean>),
+        [field]: !(prev[section as keyof typeof prev] as Record<string, boolean>)[field],
+      },
     }));
   };
 
   const handleNextStep = (e: React.MouseEvent) => {
     e.preventDefault();
-    
-    // Validate budget field when moving from first step
-    if (currentStep === 1) {
-      if (!formData.constructionBudget || formData.constructionBudget.trim() === '') {
-        alert('Please enter your construction budget');
-        return;
-      }
+    if (currentStep === 1 && (!formData.constructionBudget || formData.constructionBudget.trim() === '')) {
+      alert('Please enter your construction budget');
+      return;
     }
-    
     setCurrentStep(currentStep + 1);
   };
 
   const handlePreviousStep = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent any form submission
+    e.preventDefault();
     setCurrentStep(currentStep - 1);
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     if (isSubmitting) return;
 
-    // Validate required fields before submission
     if (!formData.constructionBudget || formData.constructionBudget.trim() === '') {
       alert('Please enter your construction budget');
       setCurrentStep(1);
@@ -311,150 +296,27 @@ const ConstructionForm = () => {
     setIsSubmitting(true);
 
     try {
-      const formDataToSubmit = new FormData();
-
-      // Add all form fields except images
+      const fd = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
         if (key !== 'inspirationImages') {
-          if (typeof value === 'object' && value !== null) {
-            formDataToSubmit.append(key, JSON.stringify(value));
-          } else {
-            formDataToSubmit.append(key, value.toString());
-          }
+          fd.append(key, typeof value === 'object' && value !== null ? JSON.stringify(value) : value.toString());
         }
       });
-
-      // Anti-bot fields
-      formDataToSubmit.append('_website', honeypot);
-      formDataToSubmit.append('_loadTime', formLoadedAt.current.toString());
-
-      // Add images
+      fd.append('_website', honeypot);
+      fd.append('_loadTime', formLoadedAt.current.toString());
       formData.inspirationImages.forEach((image, index) => {
-        formDataToSubmit.append(`inspiration_image_${index}`, image);
+        fd.append(`inspiration_image_${index}`, image);
       });
 
-      const response = await fetch('/api/submit-form', {
-        method: 'POST',
-        body: formDataToSubmit,
-      });
-
+      const response = await fetch('/api/submit-form', { method: 'POST', body: fd });
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Submission failed');
-      }
+      if (!response.ok) throw new Error(data.message || 'Submission failed');
 
-      alert('Form submitted successfully! Our team will review your submission.');
-
-      // Reset form to initial state
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        constructionBudget: '',
-        propertyAddress: '',
-        hasSurvey: 'yes',
-        hasSlope: 'yes',
-        padDirection: '',
-        stories: 'single',
-        aestheticStyle: '',
-        aestheticStyleCustom: '',
-        living: '',
-        patios: '',
-        garage: '',
-        bedrooms: '',
-        bathrooms: '',
-        desiredRooms: {
-          greatRoom: false,
-          eatInKitchen: false,
-          breakfastNook: false,
-          laundryRoom: false,
-          officeStudy: false,
-          jackAndJillBathroom: false,
-          formalLivingRoom: false,
-          formalDiningRoom: false,
-          masterSeatingSpace: false,
-          golfSimulator: false,
-          barWetBar: false,
-          wineRoom: false,
-          mediaRoom: false,
-          salon: false,
-          mudroom: false,
-          bonusRoom: false,
-          gameRoom: false,
-          safeRoom: false,
-          workshop: false
-        },
-        roofStyle: 'gable',
-        ceilingHeight: '9',
-        kitchenFeatures: {
-          butlerPantry: false,
-          cornerPantry: false,
-          kitchenIsland: false,
-          galleryKitchen: false,
-          lShapedKitchen: false,
-          uShapedKitchen: false,
-          breakfastBar: false
-        },
-        masterBathroom: {
-          walkInShower: false,
-          butlerPantry: false,
-          customShowerSeat: false,
-          shampooNiche: false,
-          freestandingBathtub: false,
-          makeupVanitySpace: false,
-          chandelier: false
-        },
-        masterCloset: {
-          hisAndHerSpaces: false,
-          oneLargeSpace: false,
-          connectedToMasterBedroom: false,
-          accessFromMasterBathroom: false,
-          builtInDrawersAndShelving: false
-        },
-        countertopFinishes: {
-          granite: false,
-          marble: false,
-          quartz: false,
-          laminate: false,
-          tile: false
-        },
-        flooringFinishes: {
-          ceramicTile: false,
-          stainedConcrete: false,
-          woodFlooring: false,
-          vinylFlooring: false,
-          carpet: false
-        },
-        fireplace: 'yes',
-        fireplaceType: {
-          woodBurning: false,
-          electric: false,
-          gasPropane: false
-        },
-        porchLocations: {
-          frontPorch: false,
-          rearPorch: false,
-          sidePorch: false
-        },
-        patiosCovered: 'yes',
-        patioCeilingMaterial: '',
-        waterHeater: 'tank',
-        insulationType: {
-          sprayFoam: false,
-          vinylBacked: false,
-          batt: false,
-          looseFillAndBlowIn: false
-        },
-        additionalRequests: '',
-        additionalItems: '',
-        unwantedItems: '',
-        pinterestLink: '',
-        inspirationImages: []
-      });
+      alert('Design brief submitted! Our team will review your submission.');
+      setFormData({ ...INITIAL_FORM_DATA });
       setCurrentStep(1);
       formLoadedAt.current = Date.now();
-
     } catch (error) {
       console.error('Submission error:', error);
       alert(error instanceof Error ? error.message : 'There was an error submitting the form. Please try again.');
@@ -463,96 +325,64 @@ const ConstructionForm = () => {
     }
   };
 
-  const renderBasicInfo = () => (
+  // ── Step 1: About You ────────────────────────────────────────────────────
+
+  const renderAboutYou = () => (
     <div className="space-y-6">
-      <FormField label="Your Full Name">
-        <TextInput
-          name="name"
-          value={formData.name}
-          onChange={handleInputChange}
-          placeholder="Enter your full name"
-        />
+      <FormField label="Full Name">
+        <TextInput name="name" value={formData.name} onChange={handleInputChange} placeholder="Enter your full name" />
       </FormField>
 
-      <FormField label="Email Address">
-        <TextInput
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleInputChange}
-          placeholder="Enter your email address"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label="Email Address">
+          <TextInput name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="you@example.com" />
+        </FormField>
+        <FormField label="Phone Number">
+          <TextInput name="phone" type="tel" value={formData.phone} onChange={handleInputChange} placeholder="(555) 555-5555" />
+        </FormField>
+      </div>
+
+      <FormField label="Construction Budget (not including land/site prep) *">
+        <TextInput name="constructionBudget" value={formData.constructionBudget} onChange={handleInputChange} placeholder="e.g. $500,000" required />
       </FormField>
 
-      <FormField label="Phone Number">
-        <TextInput
-          name="phone"
-          type="tel"
-          value={formData.phone}
-          onChange={handleInputChange}
-          placeholder="Enter your phone number"
-        />
-      </FormField>
-  
-      <FormField label="What is your Budget for Construction? (Not including Land/Site Prep) *">
-        <TextInput
-          name="constructionBudget"
-          value={formData.constructionBudget}
-          onChange={handleInputChange}
-          placeholder="Type here..."
-          required
-        />
-      </FormField>
-  
-      <FormField label="Has a property been purchased? If yes, what is the address?">
-        <TextInput
-          name="propertyAddress"
-          value={formData.propertyAddress}
-          onChange={handleInputChange}
-          placeholder="Type here..."
-        />
-      </FormField>
-  
-      <FormField label="Do you currently have a Survey of said property?">
-        <RadioGroup
-          name="hasSurvey"
-          options={[
-            { label: 'Yes', value: 'yes' },
-            { label: 'No', value: 'no' }
-          ]}
-          value={formData.hasSurvey}
-          onChange={handleInputChange}
-        />
-      </FormField>
-  
-      <FormField label="Does the property's current state have a significant slope/grade?">
-        <RadioGroup
-          name="hasSlope"
-          options={[
-            { label: 'Yes', value: 'yes' },
-            { label: 'No', value: 'no' }
-          ]}
-          value={formData.hasSlope}
-          onChange={handleInputChange}
-        />
-      </FormField>
-  
-      <FormField label="Pad Location: Which Direction would you like your home to face?">
-        <TextInput
-          name="padDirection"
-          value={formData.padDirection}
-          onChange={handleInputChange}
-          placeholder="Type here..."
-        />
+      <FormField label="Property Address (if purchased)">
+        <TextInput name="propertyAddress" value={formData.propertyAddress} onChange={handleInputChange} placeholder="Street address, city, state" />
       </FormField>
 
-      <FormField label="Single Story or Two Story?">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label="Do you have a survey of the property?">
+          <RadioGroup
+            name="hasSurvey"
+            options={[{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }]}
+            value={formData.hasSurvey}
+            onChange={handleInputChange}
+          />
+        </FormField>
+        <FormField label="Does the property have a significant slope?">
+          <RadioGroup
+            name="hasSlope"
+            options={[{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }]}
+            value={formData.hasSlope}
+            onChange={handleInputChange}
+          />
+        </FormField>
+      </div>
+
+      <FormField label="Which direction would you like the home to face?">
+        <TextInput name="padDirection" value={formData.padDirection} onChange={handleInputChange} placeholder="e.g. South, Southeast" />
+      </FormField>
+    </div>
+  );
+
+  // ── Step 2: The Build ────────────────────────────────────────────────────
+
+  const renderTheBuild = () => (
+    <div className="space-y-6">
+      <FormField label="Stories">
         <RadioGroup
           name="stories"
-          options={[
-            { label: 'Single Story', value: 'single' },
-            { label: 'Two Story', value: 'two' }
-          ]}
+          options={[{ label: 'Single Story', value: 'single' }, { label: 'Two Story', value: 'two' }]}
           value={formData.stories}
           onChange={handleInputChange}
         />
@@ -594,371 +424,375 @@ const ConstructionForm = () => {
           />
         )}
       </FormField>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label="Total Living Area (sq ft)">
+          <TextInput name="living" value={formData.living} onChange={handleInputChange} placeholder="e.g. 2500" type="number" />
+        </FormField>
+        <FormField label="Patio Area (sq ft)">
+          <TextInput name="patios" value={formData.patios} onChange={handleInputChange} placeholder="e.g. 600" type="number" />
+        </FormField>
+      </div>
+
+      <FormField label="Building Footprint">
+        <select
+          name="footprintPreset"
+          value={formData.footprintPreset}
+          onChange={handleInputChange}
+          className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+        >
+          <option value="">Select a footprint size...</option>
+          <option value="compact">Compact (~40×50)</option>
+          <option value="standard">Standard (~50×60)</option>
+          <option value="large">Large (~60×70)</option>
+          <option value="xl">XL (~70×80+)</option>
+          <option value="custom">Custom dimensions</option>
+        </select>
+        {formData.footprintPreset === 'custom' && (
+          <div className="grid grid-cols-2 gap-4 mt-3">
+            <FormField label="Width (ft)">
+              <TextInput name="footprintWidth" value={formData.footprintWidth} onChange={handleInputChange} placeholder="e.g. 55" type="number" />
+            </FormField>
+            <FormField label="Depth (ft)">
+              <TextInput name="footprintDepth" value={formData.footprintDepth} onChange={handleInputChange} placeholder="e.g. 65" type="number" />
+            </FormField>
+          </div>
+        )}
+      </FormField>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-gray-900">Garage</h3>
+        <FormField label="Number of Cars">
+          <RadioGroup
+            name="garageCars"
+            options={[
+              { label: '1 Car', value: '1' },
+              { label: '2 Cars', value: '2' },
+              { label: '3 Cars', value: '3' },
+              { label: '4+ Cars', value: '4+' },
+            ]}
+            value={formData.garageCars}
+            onChange={handleInputChange}
+          />
+        </FormField>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField label="Attached or Detached?">
+            <RadioGroup
+              name="garageType"
+              options={[{ label: 'Attached', value: 'attached' }, { label: 'Detached', value: 'detached' }]}
+              value={formData.garageType}
+              onChange={handleInputChange}
+            />
+          </FormField>
+          <FormField label="Load Direction">
+            <RadioGroup
+              name="garageLoad"
+              options={[{ label: 'Front-Load', value: 'front-load' }, { label: 'Side-Load', value: 'side-load' }]}
+              value={formData.garageLoad}
+              onChange={handleInputChange}
+            />
+          </FormField>
+        </div>
+      </div>
+
+      <FormField label="Master Suite Location">
+        <RadioGroup
+          name="masterLocation"
+          options={[
+            { label: 'West End', value: 'west-end' },
+            { label: 'East End', value: 'east-end' },
+            { label: 'Rear Center', value: 'rear-center' },
+          ]}
+          value={formData.masterLocation}
+          onChange={handleInputChange}
+        />
+      </FormField>
+
+      {formData.stories === 'two' && (
+        <FormField label="What goes upstairs?">
+          <RadioGroup
+            name="l2Scope"
+            options={[
+              { label: 'All Secondary Bedrooms', value: 'all-secondary-bedrooms' },
+              { label: 'Game Room + Bedrooms', value: 'game-room-bedrooms' },
+              { label: 'Bonus Rooms Only', value: 'bonus-rooms-only' },
+            ]}
+            value={formData.l2Scope}
+            onChange={handleInputChange}
+          />
+        </FormField>
+      )}
     </div>
   );
 
-  const renderPropertyDetails = () => (
+  // ── Step 3: Rooms ────────────────────────────────────────────────────────
+
+  const renderRooms = () => (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Living (Sqft)">
-          <TextInput
-            name="living"
-            value={formData.living}
-            onChange={handleInputChange}
-            placeholder="Enter square footage"
-            type="number"
-          />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <FormField label="Bedrooms">
+          <TextInput name="bedrooms" value={formData.bedrooms} onChange={handleInputChange} type="number" placeholder="e.g. 4" />
         </FormField>
-        
-        <FormField label="Patios (Sqft)">
-          <TextInput
-            name="patios"
-            value={formData.patios}
-            onChange={handleInputChange}
-            placeholder="Enter square footage"
-            type="number"
-          />
+        <FormField label="Full Bathrooms">
+          <TextInput name="fullBaths" value={formData.fullBaths} onChange={handleInputChange} type="number" placeholder="e.g. 3" />
+        </FormField>
+        <FormField label="Half Bathrooms">
+          <TextInput name="halfBaths" value={formData.halfBaths} onChange={handleInputChange} type="number" placeholder="e.g. 1" />
         </FormField>
       </div>
-  
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Garage (Sqft)">
-          <TextInput
-            name="garage"
-            value={formData.garage}
-            onChange={handleInputChange}
-            placeholder="Enter square footage"
-            type="number"
-          />
-        </FormField>
-      </div>
-  
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Number of Bedrooms">
-          <TextInput
-            name="bedrooms"
-            value={formData.bedrooms}
-            onChange={handleInputChange}
-            type="number"
-            placeholder="Enter number of bedrooms"
-          />
-        </FormField>
-        
-        <FormField label="Number of Bathrooms">
-          <TextInput
-            name="bathrooms"
-            value={formData.bathrooms}
-            onChange={handleInputChange}
-            type="number"
-            placeholder="Enter number of bathrooms"
-          />
-        </FormField>
-      </div>
-  
-      <FormField label="Specific Types of Rooms/Spaces Desired">
+
+      <FormField label="Desired Rooms / Spaces">
         <CheckboxGroup
           section="desiredRooms"
-          options={Object.entries(formData.desiredRooms).map(([key, _]) => ({
-            label: key
-              .split(/(?=[A-Z])/)
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' '),
-            value: key
-          }))}
+          options={[
+            { label: 'Great Room', value: 'greatRoom' },
+            { label: 'Eat-In Kitchen', value: 'eatInKitchen' },
+            { label: 'Laundry Room', value: 'laundryRoom' },
+            { label: 'Office / Study', value: 'officeStudy' },
+            { label: 'Golf Simulator', value: 'golfSimulator' },
+            { label: 'Bar / Wet Bar', value: 'barWetBar' },
+            { label: 'Wine Room', value: 'wineRoom' },
+            { label: 'Media Room', value: 'mediaRoom' },
+            { label: 'Salon', value: 'salon' },
+            { label: 'Mudroom', value: 'mudroom' },
+            { label: 'Bonus Room', value: 'bonusRoom' },
+            { label: 'Game Room', value: 'gameRoom' },
+            { label: 'Safe Room', value: 'safeRoom' },
+            { label: 'Workshop', value: 'workshop' },
+            { label: 'Master Seating Space', value: 'masterSeatingSpace' },
+          ]}
           values={formData.desiredRooms}
+          onChange={handleCheckboxChange}
+        />
+      </FormField>
+
+      <FormField label="Kitchen Features">
+        <CheckboxGroup
+          section="kitchenFeatures"
+          options={[
+            { label: 'Butler Pantry', value: 'butlerPantry' },
+            { label: 'Corner Pantry', value: 'cornerPantry' },
+            { label: 'Kitchen Island', value: 'kitchenIsland' },
+            { label: 'Breakfast Bar', value: 'breakfastBar' },
+          ]}
+          values={formData.kitchenFeatures}
+          onChange={handleCheckboxChange}
+        />
+      </FormField>
+
+      <FormField label="Master Bathroom Features">
+        <CheckboxGroup
+          section="masterBathroom"
+          options={[
+            { label: 'Walk-In Shower', value: 'walkInShower' },
+            { label: 'Custom Shower Seat', value: 'customShowerSeat' },
+            { label: 'Shampoo Niche', value: 'shampooNiche' },
+            { label: 'Freestanding Bathtub', value: 'freestandingBathtub' },
+            { label: 'Makeup Vanity Space', value: 'makeupVanitySpace' },
+            { label: 'Chandelier', value: 'chandelier' },
+          ]}
+          values={formData.masterBathroom}
+          onChange={handleCheckboxChange}
+        />
+      </FormField>
+
+      <FormField label="Master Closet">
+        <CheckboxGroup
+          section="masterCloset"
+          options={[
+            { label: 'His & Hers Spaces', value: 'hisAndHerSpaces' },
+            { label: 'One Large Space', value: 'oneLargeSpace' },
+            { label: 'Connected to Master Bedroom', value: 'connectedToMasterBedroom' },
+            { label: 'Access From Master Bathroom', value: 'accessFromMasterBathroom' },
+            { label: 'Built-In Drawers & Shelving', value: 'builtInDrawersAndShelving' },
+          ]}
+          values={formData.masterCloset}
           onChange={handleCheckboxChange}
         />
       </FormField>
     </div>
   );
 
-  const renderDesignPreferences = () => (
+  // ── Step 4: Architecture ─────────────────────────────────────────────────
+
+  const renderArchitecture = () => (
     <div className="space-y-6">
-      <FormField label="What is your Desired Roof Style?">
+      <FormField label="Roof Style">
         <RadioGroup
           name="roofStyle"
           options={[
             { label: 'Gable', value: 'gable' },
             { label: 'Single Slope', value: 'single-slope' },
             { label: 'Flat', value: 'flat' },
-            { label: 'Parapet Wall', value: 'parapet-wall' }
+            { label: 'Parapet Wall', value: 'parapet-wall' },
           ]}
           value={formData.roofStyle}
           onChange={handleInputChange}
         />
       </FormField>
-  
-      <FormField label="What ceiling height would you like throughout your home?">
+
+      <FormField label="Roof Pitch">
         <RadioGroup
-          name="ceilingHeight"
+          name="roofPitch"
           options={[
-            { label: '9 Feet', value: '9' },
-            { label: '10 Feet', value: '10' },
-            { label: '12 Feet', value: '12' }
+            { label: '1:12', value: '1:12' },
+            { label: '3:12', value: '3:12' },
+            { label: '6:12', value: '6:12' },
+            { label: '8:12', value: '8:12' },
           ]}
-          value={formData.ceilingHeight}
+          value={formData.roofPitch}
+          onChange={handleInputChange}
+        />
+        <div className="mt-2">
+          <RadioGroup
+            name="roofPitch"
+            options={[{ label: '10:12', value: '10:12' }]}
+            value={formData.roofPitch}
+            onChange={handleInputChange}
+          />
+        </div>
+      </FormField>
+
+      <FormField label="Vaulted ceiling in the great room?">
+        <RadioGroup
+          name="greatRoomVaulted"
+          options={[{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }]}
+          value={formData.greatRoomVaulted}
           onChange={handleInputChange}
         />
       </FormField>
-  
-      <FormField label="Kitchen Features">
-        <CheckboxGroup
-          section="kitchenFeatures"
-          options={Object.entries(formData.kitchenFeatures).map(([key, _]) => ({
-            label: key
-              .split(/(?=[A-Z])/)
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' '),
-            value: key
-          }))}
-          values={formData.kitchenFeatures}
-          onChange={handleCheckboxChange}
-        />
-      </FormField>
-  
-      <FormField label="Master Bathroom Features">
-        <CheckboxGroup
-          section="masterBathroom"
-          options={Object.entries(formData.masterBathroom).map(([key, _]) => ({
-            label: key
-              .split(/(?=[A-Z])/)
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' '),
-            value: key
-          }))}
-          values={formData.masterBathroom}
-          onChange={handleCheckboxChange}
-        />
-      </FormField>
-  
-      <FormField label="Master Closet Features">
-        <CheckboxGroup
-          section="masterCloset"
-          options={Object.entries(formData.masterCloset).map(([key, _]) => ({
-            label: key
-              .split(/(?=[A-Z])/)
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' '),
-            value: key
-          }))}
-          values={formData.masterCloset}
-          onChange={handleCheckboxChange}
-        />
-      </FormField>
-  
-      <FormField label="Countertop Finishes">
-        <CheckboxGroup
-          section="countertopFinishes"
-          options={Object.entries(formData.countertopFinishes).map(([key, _]) => ({
-            label: key.charAt(0).toUpperCase() + key.slice(1).toLowerCase(),
-            value: key
-          }))}
-          values={formData.countertopFinishes}
-          onChange={handleCheckboxChange}
-        />
-      </FormField>
-  
-      <FormField label="Flooring Finishes">
-        <CheckboxGroup
-          section="flooringFinishes"
-          options={Object.entries(formData.flooringFinishes).map(([key, _]) => ({
-            label: key
-              .split(/(?=[A-Z])/)
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' '),
-            value: key
-          }))}
-          values={formData.flooringFinishes}
-          onChange={handleCheckboxChange}
-        />
-      </FormField>
-    </div>
-  );
 
-  const renderSpecialFeatures = () => (
-    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label="Secondary Ceiling Height">
+          <RadioGroup
+            name="secondaryCeilingHeight"
+            options={[
+              { label: '9 ft', value: '9' },
+              { label: '10 ft', value: '10' },
+              { label: '11 ft', value: '11' },
+              { label: '12 ft', value: '12' },
+            ]}
+            value={formData.secondaryCeilingHeight}
+            onChange={handleInputChange}
+          />
+        </FormField>
+        <FormField label="Master Ceiling Height">
+          <RadioGroup
+            name="masterCeilingHeight"
+            options={[
+              { label: '10 ft', value: '10' },
+              { label: '11 ft', value: '11' },
+              { label: '12 ft', value: '12' },
+            ]}
+            value={formData.masterCeilingHeight}
+            onChange={handleInputChange}
+          />
+        </FormField>
+      </div>
+
       <FormField label="Fireplace">
         <RadioGroup
           name="fireplace"
-          options={[
-            { label: 'Yes', value: 'yes' },
-            { label: 'No', value: 'no' }
-          ]}
+          options={[{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }]}
           value={formData.fireplace}
           onChange={handleInputChange}
         />
       </FormField>
-  
+
       {formData.fireplace === 'yes' && (
         <FormField label="Fireplace Type">
           <CheckboxGroup
             section="fireplaceType"
-            options={Object.entries(formData.fireplaceType).map(([key, _]) => ({
-              label: key
-                .split(/(?=[A-Z])/)
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                .join(' '),
-              value: key
-            }))}
+            options={[
+              { label: 'Wood Burning', value: 'woodBurning' },
+              { label: 'Electric', value: 'electric' },
+              { label: 'Gas / Propane', value: 'gasPropane' },
+            ]}
             values={formData.fireplaceType}
             onChange={handleCheckboxChange}
           />
         </FormField>
       )}
-  
-      <FormField label="Porch Sizing & Locations">
+
+      <FormField label="Porch Locations">
         <CheckboxGroup
           section="porchLocations"
-          options={Object.entries(formData.porchLocations).map(([key, _]) => ({
-            label: key
-              .split(/(?=[A-Z])/)
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' '),
-            value: key
-          }))}
+          options={[
+            { label: 'Front', value: 'frontPorch' },
+            { label: 'Rear', value: 'rearPorch' },
+            { label: 'Side', value: 'sidePorch' },
+          ]}
           values={formData.porchLocations}
           onChange={handleCheckboxChange}
         />
       </FormField>
-  
-      <FormField label="Are these patios covered?">
+
+      <FormField label="Covered Patios?">
         <RadioGroup
           name="patiosCovered"
-          options={[
-            { label: 'Yes', value: 'yes' },
-            { label: 'No', value: 'no' }
-          ]}
+          options={[{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }]}
           value={formData.patiosCovered}
           onChange={handleInputChange}
         />
       </FormField>
-  
-      {formData.patiosCovered === 'yes' && (
-        <FormField label="Covered Patio Ceiling Material">
-          <TextInput
-            name="patioCeilingMaterial"
-            value={formData.patioCeilingMaterial}
-            onChange={handleInputChange}
-            placeholder="Enter ceiling material"
-          />
-        </FormField>
-      )}
-  
-      <FormField label="Water Heater">
-        <RadioGroup
-          name="waterHeater"
-          options={[
-            { label: 'Tank', value: 'tank' },
-            { label: 'Tankless', value: 'tankless' }
-          ]}
-          value={formData.waterHeater}
-          onChange={handleInputChange}
-        />
-      </FormField>
-  
-      <FormField label="Insulation Type">
-        <CheckboxGroup
-          section="insulationType"
-          options={Object.entries(formData.insulationType).map(([key, _]) => ({
-            label: key
-              .split(/(?=[A-Z])/)
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(' '),
-            value: key
-          }))}
-          values={formData.insulationType}
-          onChange={handleCheckboxChange}
-        />
-      </FormField>
-  
-      <FormField label="Additional Requests">
-        <textarea
-          name="additionalRequests"
-          className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-[#D4A843] focus:border-[#D4A843] text-gray-900 placeholder-gray-500"
-          rows={4}
-          value={formData.additionalRequests}
-          onChange={handleInputChange}
-          placeholder="Enter any additional requests here..."
-        />
+
+      <FormField label="Rear Covered Patio Depth (ft)">
+        <TextInput name="rearPatioDepth" value={formData.rearPatioDepth} onChange={handleInputChange} placeholder="e.g. 12" type="number" />
       </FormField>
     </div>
   );
 
-  const renderReview = () => (
-  <div className="space-y-8">
-    <FormField label="Are there any items or spaces that you would like in your new home that were not covered in this predesign form?">
-      <textarea
-        name="additionalItems"
-        className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-[#D4A843] focus:border-[#D4A843] text-gray-900 placeholder-gray-500"
-        rows={4}
-        value={formData.additionalItems}
-        onChange={handleInputChange}
-        placeholder="Enter any additional items or spaces here..."
-      />
-    </FormField>
+  // ── Step 5: Inspiration ──────────────────────────────────────────────────
 
-    <FormField label="Are there any specific items that you DO NOT WANT in your new home?">
-      <textarea
-        name="unwantedItems"
-        className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-[#D4A843] focus:border-[#D4A843] text-gray-900 placeholder-gray-500"
-        rows={4}
-        value={formData.unwantedItems}
-        onChange={handleInputChange}
-        placeholder="Enter any unwanted items here..."
-      />
-    </FormField>
-
-    <div className="space-y-4">
-      <FormField label="Pinterest Board of Ideas for:">
-        <ul className="list-disc pl-6 space-y-2 text-gray-900">
-          <li>Exterior Look</li>
-          <li>Interior Design</li>
-          <li>Windows</li>
-          <li>Bathrooms</li>
-          <li>Bedroom / Closets</li>
-          <li>Kitchen</li>
-          <li>Mudroom</li>
-          <li>Office</li>
-          <li>Great Room</li>
-          <li>Floorplans you like</li>
-          <li>Store (if applicable)</li>
-        </ul>
-      </FormField>
-
-      <FormField label="Do you have a Pinterest Board filled with your visions? If so, we would love to see it!">
-        <TextInput
-          name="pinterestLink"
-          value={formData.pinterestLink}
+  const renderInspiration = () => (
+    <div className="space-y-8">
+      <FormField label="Are there any items or spaces not covered above that you'd like in your home?">
+        <textarea
+          name="additionalItems"
+          className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-[#D4A843] focus:border-[#D4A843] text-gray-900 placeholder-gray-500"
+          rows={4}
+          value={formData.additionalItems}
           onChange={handleInputChange}
-          placeholder="Paste your Pinterest board link here"
+          placeholder="Anything else you'd like us to know..."
         />
       </FormField>
 
+      <FormField label="Are there any specific items you DO NOT want in your home?">
+        <textarea
+          name="unwantedItems"
+          className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-[#D4A843] focus:border-[#D4A843] text-gray-900 placeholder-gray-500"
+          rows={4}
+          value={formData.unwantedItems}
+          onChange={handleInputChange}
+          placeholder="Items or features to avoid..."
+        />
+      </FormField>
+
+      <FormField label="Pinterest Board Link">
+        <p className="text-sm text-gray-600 mb-2">Share a board with your vision — exteriors, interiors, floor plans, kitchens, etc.</p>
+        <TextInput name="pinterestLink" value={formData.pinterestLink} onChange={handleInputChange} placeholder="https://pinterest.com/..." />
+      </FormField>
+
       <FormField label="Upload Inspiration Images">
-        <p className="text-sm text-gray-600 mb-3">Upload photos of homes, interiors, or details that inspire you. Our AI will analyze these to understand your vision.</p>
+        <p className="text-sm text-gray-600 mb-3">Photos of homes, interiors, or details that inspire you. Our AI will analyze these to understand your vision.</p>
         <ImageUpload
           onImagesChange={(images) => setFormData(prev => ({ ...prev, inspirationImages: images }))}
           maxImages={10}
         />
       </FormField>
     </div>
-  </div>
-);
+  );
+
+  // ── Step router ──────────────────────────────────────────────────────────
 
   const renderStepContent = () => {
-    switch(currentStep) {
-      case 1:
-        return renderBasicInfo();
-      case 2:
-        return renderPropertyDetails();
-      case 3:
-        return renderDesignPreferences();
-      case 4:
-        return renderSpecialFeatures();
-      case 5:
-        return renderReview();
-      default:
-        return renderBasicInfo();
+    switch (currentStep) {
+      case 1: return renderAboutYou();
+      case 2: return renderTheBuild();
+      case 3: return renderRooms();
+      case 4: return renderArchitecture();
+      case 5: return renderInspiration();
+      default: return renderAboutYou();
     }
   };
 
@@ -977,81 +811,57 @@ const ConstructionForm = () => {
               />
             </div>
             <div className="text-center mt-4">
-              <CardTitle className="text-2xl sm:text-3xl text-white">Pre-Design Form</CardTitle>
+              <CardTitle className="text-2xl sm:text-3xl text-white">Design Brief</CardTitle>
               <p className="mt-2 text-sm text-gray-300">
-                Help us understand your construction needs
+                Tell us about your dream steel home
               </p>
             </div>
           </div>
-          
+
           <div className="w-full mt-6">
             <div className="flex space-x-1 sm:space-x-2 overflow-x-auto px-1 py-2">
-              {['Basic Info', 'Property Details', 'Design Preferences', 'Special Features', 'Review'].map((step, index) => (
+              {STEP_LABELS.map((step, index) => (
                 <button
                   key={step}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setCurrentStep(index + 1);
-                  }}
-                  className={`
-                    flex-none px-3 py-1.5 text-sm rounded-full whitespace-nowrap
-                    ${currentStep === index + 1
-                      ? 'bg-blue-500 text-white'
+                  onClick={(e) => { e.preventDefault(); setCurrentStep(index + 1); }}
+                  className={`flex-none px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
+                    currentStep === index + 1
+                      ? 'bg-[#D4A843] text-black font-medium'
                       : 'bg-gray-800 text-gray-300'
-                    }
-                  `}
+                  }`}
                 >
                   {step}
                 </button>
               ))}
             </div>
             <div className="mt-4 h-1.5 bg-gray-700 rounded-full">
-              <div 
+              <div
                 className="h-full bg-[#D4A843] rounded-full transition-all duration-300"
                 style={{ width: `${(currentStep / 5) * 100}%` }}
               />
             </div>
           </div>
         </CardHeader>
-  
+
         <CardContent className="p-4 pb-24 sm:p-6 sm:pb-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Honeypot field - hidden from real users, bots will fill it */}
+            {/* Honeypot */}
             <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }}>
               <label htmlFor="_website">Website</label>
-              <input
-                type="text"
-                id="_website"
-                name="_website"
-                tabIndex={-1}
-                autoComplete="off"
-                value={honeypot}
-                onChange={(e) => setHoneypot(e.target.value)}
-              />
+              <input type="text" id="_website" name="_website" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
             </div>
 
-            <div className="space-y-6">
-              {renderStepContent()}
-            </div>
-  
+            <div className="space-y-6">{renderStepContent()}</div>
+
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 sm:relative sm:bg-transparent sm:border-t-0 sm:p-0 sm:mt-6">
               <div className="flex justify-between max-w-4xl mx-auto">
                 {currentStep > 1 && (
-                  <button
-                    type="button"
-                    onClick={handlePreviousStep}
-                    className="px-5 py-2.5 bg-gray-500 text-white rounded-full text-sm font-medium hover:bg-gray-600 transition-colors"
-                  >
+                  <button type="button" onClick={handlePreviousStep} className="px-5 py-2.5 bg-gray-500 text-white rounded-full text-sm font-medium hover:bg-gray-600 transition-colors">
                     Previous
                   </button>
                 )}
-                
                 {currentStep < 5 ? (
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="px-5 py-2.5 bg-[#D4A843] text-black rounded-full text-sm font-medium hover:bg-amber-500 transition-colors ml-auto"
-                  >
+                  <button type="button" onClick={handleNextStep} className="px-5 py-2.5 bg-[#D4A843] text-black rounded-full text-sm font-medium hover:bg-amber-500 transition-colors ml-auto">
                     Next
                   </button>
                 ) : (
@@ -1059,12 +869,10 @@ const ConstructionForm = () => {
                     type="submit"
                     disabled={isSubmitting}
                     className={`px-5 py-2.5 text-white rounded-full text-sm font-medium transition-colors ml-auto ${
-                      isSubmitting
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : 'bg-green-500 hover:bg-green-600'
+                      isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'
                     }`}
                   >
-                    {isSubmitting ? 'Submitting...' : 'Submit'}
+                    {isSubmitting ? 'Submitting...' : 'Submit Design Brief'}
                   </button>
                 )}
               </div>
