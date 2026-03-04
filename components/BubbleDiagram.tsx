@@ -76,12 +76,12 @@ function buildBubbles(state: DesignState): Bubble[] {
 interface Props {
   state: DesignState
   onPositionsChange: (p: Record<string, { x: number; y: number }>) => void
-  generatedSVG?: string
-  onGenerate: () => void
+  generatedImageUrl?: string
+  onGenerate: (base64: string) => void
   generating: boolean
 }
 
-export default function BubbleDiagram({ state, onPositionsChange, generatedSVG, onGenerate, generating }: Props) {
+export default function BubbleDiagram({ state, onPositionsChange, generatedImageUrl, onGenerate, generating }: Props) {
   const [bubbles, setBubbles] = useState<Bubble[]>(() => buildBubbles(state))
   const dragRef = useRef<{ id: string; ox: number; oy: number } | null>(null)
   const svgRef  = useRef<SVGSVGElement>(null)
@@ -172,12 +172,36 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedSVG, 
       window.removeEventListener('touchmove', tm); window.removeEventListener('touchend', up) }
   }, [onMove, onEnd])
 
-  if (generatedSVG) {
+  const handleGenerate = async () => {
+    const svg = svgRef.current
+    if (!svg) return
+    // Convert SVG to PNG via canvas
+    const serializer = new XMLSerializer()
+    const svgStr = serializer.serializeToString(svg)
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' })
+    const url = URL.createObjectURL(blob)
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = VP_W * 2
+      canvas.height = VP_H * 2
+      const ctx = canvas.getContext('2d')!
+      ctx.scale(2, 2)
+      ctx.drawImage(img, 0, 0)
+      URL.revokeObjectURL(url)
+      const base64 = canvas.toDataURL('image/png')
+      onGenerate(base64)
+    }
+    img.src = url
+  }
+
+  if (generatedImageUrl) {
     return (
       <div className="w-full">
-        <div dangerouslySetInnerHTML={{ __html: generatedSVG }} className="w-full" />
-        <button onClick={onGenerate} className="mt-3 w-full py-2 text-sm text-gray-400 border border-gray-700 rounded-lg hover:border-[#C4A35A] hover:text-[#C4A35A] transition-colors">
-          ↺ Regenerate Floor Plan
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={generatedImageUrl} alt="Generated floor plan zone map" className="w-full rounded-lg"/>
+        <button onClick={handleGenerate} className="mt-3 w-full py-2 text-sm text-gray-400 border border-gray-700 rounded-lg hover:border-[#C4A35A] hover:text-[#C4A35A] transition-colors">
+          ↺ Regenerate Zone Map
         </button>
       </div>
     )
@@ -231,9 +255,9 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedSVG, 
           fontSize="6" fontFamily="system-ui" fill="#333" letterSpacing="1.5">BARNHAUS STEEL BUILDERS</text>
       </svg>
 
-      <button onClick={onGenerate} disabled={generating}
+      <button onClick={handleGenerate} disabled={generating}
         className="mt-3 w-full py-3 bg-[#C4A35A] text-black font-semibold rounded-lg hover:bg-[#D4B36A] disabled:opacity-50 disabled:cursor-wait transition-colors text-sm">
-        {generating ? 'Generating Floor Plan...' : 'Generate Floor Plan →'}
+        {generating ? 'Generating Zone Map...' : 'Generate Zone Map →'}
       </button>
     </div>
   )

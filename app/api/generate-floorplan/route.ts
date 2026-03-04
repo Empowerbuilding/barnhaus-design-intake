@@ -1,148 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: NextRequest) {
-  const { bubblePositions, state } = await req.json()
+  const { imageBase64, state } = await req.json()
 
-  const roomList = Object.entries(bubblePositions as Record<string, { x: number; y: number }>)
-    .map(([id, pos]) => `- ${id}: (${Math.round(pos.x)}, ${Math.round(pos.y)})`)
-    .join('\n')
+  // 1. Upload bubble diagram PNG to Supabase storage
+  const filename = `floor-plan-bubbles/${Date.now()}.png`
+  const buffer = Buffer.from(imageBase64.replace(/^data:image\/png;base64,/, ''), 'base64')
 
-  const prompt = `You are an expert residential floor plan layout engine.
+  const { error: uploadError } = await supabase.storage
+    .from('temp')
+    .upload(filename, buffer, { contentType: 'image/png', upsert: true })
 
-House specs:
-- Total: ${state.sqft || 2500} SF, ${state.bedrooms || 3} bed, ${state.bathrooms || 2} bath
-- Shape: ${state.shape || 'rectangle'}
-- Style: ${state.style || 'Hill Country'}
-- Stories: ${state.stories || 1}
-- Garage: ${state.garageCount || 'none'}
+  if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
 
-The client arranged these room bubbles (SVG coords, 500x360 viewport). Use these relative positions to inform adjacency and layout:
-${roomList}
+  const { data: { publicUrl } } = supabase.storage.from('temp').getPublicUrl(filename)
 
-Return a JSON object with this exact structure — NO markdown, NO explanation, ONLY the JSON:
-{
-  "footprint": { "x": number, "y": number, "width": number, "height": number },
-  "rooms": [
-    { "id": "string", "label": "string", "x": number, "y": number, "width": number, "height": number, "type": "living|kitchen|master|bedroom|bath|garage|service|porch|hallway" }
-  ],
-  "hallways": [
-    { "x": number, "y": number, "width": number, "height": number }
-  ]
-}
+  // 2. Call concept-card webhook with zone map prompt
+  const beds  = state.bedrooms || 3
+  const baths = state.bathrooms || 2
+  const sqft  = state.sqft || 2500
+  const style = state.style || 'Hill Country'
 
-CRITICAL RULES — follow exactly:
-- All coords in SVG units, viewport 500x360
-- Footprint: x:30, y:25, width:380, height:290 (rooms go inside this box)
-- Garage and porch can be outside footprint, attached to edges
-- Rooms MUST NOT overlap — check every room against every other
-- Use a simple grid approach: divide footprint into zones
-  - Top-right zone (x:260-410, y:25-160): Master Bed + Master Bath + WIC
-  - Center zone (x:30-260, y:25-170): Great Room, Kitchen, Dining
-  - Bottom zone (x:30-410, y:170-315): Secondary bedrooms + bathrooms + hallway + laundry
-- Hallway: a ~18px wide horizontal or vertical strip connecting bedroom zone to living zone
-- Typical sizes (width x height): Great Room 120x90, Kitchen 90x70, Dining 80x60,
-  Master Bed 100x80, Master Bath 70x55, WIC 55x45, Secondary Bed 85x70, Bath 60x50,
-  Laundry 55x45, Utility 50x40, Hallway 18x150 or 120x18, Garage 100x75
-- Place rooms edge-to-edge with no gaps inside the footprint
-- Return ONLY valid JSON, no explanation`
+  const prompt = `This is a room bubble diagram for a ${sqft} SF ${style} style home with ${beds} bedrooms and ${baths} bathrooms. Convert this bubble arrangement into a clean architectural zone map. Keep the same relative positions of each zone. Draw zones as labeled rectangular areas with clean walls. Add hallway corridors connecting the bedroom zones to the living areas. Label each zone clearly. Use an architectural diagram style — dark background, white or light gray walls, zone labels in clean sans-serif font. Do not add furniture or detail. Just zones, walls, hallways, and labels.`
 
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'No API key' }, { status: 500 })
-
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const webhookRes = await fetch('https://n8n.empowerbuilding.ai/webhook/concept-card', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'gpt-4o',
-      max_tokens: 2048,
-      response_format: { type: 'json_object' },
-      messages: [{ role: 'user', content: prompt }],
+      imageUrl: publicUrl,
+      prompt,
+      approvedFloorPlanUrl: publicUrl,
+      projectName: `Design-${Date.now()}`,
     }),
   })
 
-  const data = await res.json()
-  const text: string = data?.choices?.[0]?.message?.content || '{}'
-  
-  let layout
-  try { layout = JSON.parse(text) } catch { return NextResponse.json({ error: 'Parse failed' }, { status: 500 }) }
+  if (!webhookRes.ok) {
+    const txt = await webhookRes.text()
+    return NextResponse.json({ error: `Webhook failed: ${txt.slice(0,200)}` }, { status: 500 })
+  }
 
-  // Render the layout as clean SVG server-side
-  const svg = renderFloorPlan(layout, state)
-  return NextResponse.json({ svg })
-}
+  const result = await webhookRes.json()
+  const imageUrl = result.conceptCard || result.enhancedFloorPlanUrl
 
-const TYPE_FILL: Record<string, string> = {
-  living: '#F5EDD6', kitchen: '#EDE8DC', master: '#EBE4D8',
-  bedroom: '#E8E4DC', bath: '#E0E8EC', garage: '#E0E0DC',
-  service: '#DDDBD8', porch: '#E8EDDF', hallway: '#ECECEC',
-}
-const TYPE_STROKE: Record<string, string> = {
-  living: '#C4A35A', kitchen: '#B89B56', master: '#A08848',
-  bedroom: '#9A9080', bath: '#7090A0', garage: '#888880',
-  service: '#888888', porch: '#7A9060', hallway: '#AAAAAA',
-}
-
-function doorArc(x: number, y: number, w: number, side: 'top'|'bottom'|'left'|'right'): string {
-  // Small quarter-circle door symbol
-  const s = 12
-  if (side === 'bottom') return `<path d="M${x+w/2-s/2},${y} a${s},${s} 0 0,1 ${s},0" stroke="#777" stroke-width="0.8" fill="none"/>`
-  return `<path d="M${x},${y+s/2} a${s},${s} 0 0,1 0,-${s}" stroke="#777" stroke-width="0.8" fill="none"/>`
-}
-
-function renderFloorPlan(layout: { footprint?: {x:number;y:number;width:number;height:number}; rooms?: {id:string;label:string;x:number;y:number;width:number;height:number;type:string}[]; hallways?: {x:number;y:number;width:number;height:number}[] }, state: Record<string,unknown>): string {
-  const rooms = layout.rooms || []
-  const hallways = layout.hallways || []
-  const fp = layout.footprint || { x: 30, y: 30, width: 440, height: 300 }
-
-  const hallwaySVG = hallways.map(h =>
-    `<rect x="${h.x}" y="${h.y}" width="${h.width}" height="${h.height}" fill="#E8E8E8" stroke="#AAA" stroke-width="1"/>`
-  ).join('\n')
-
-  const roomsSVG = rooms.map(r => {
-    const fill = TYPE_FILL[r.type] || '#F0EEE8'
-    const stroke = TYPE_STROKE[r.type] || '#999'
-    const isExterior = r.type === 'garage' || r.type === 'porch'
-    const sw = isExterior ? '1.2' : '1.5'
-    const cx = r.x + r.width / 2
-    const cy = r.y + r.height / 2
-    const lines = r.label.split(' ')
-    const tspans = lines.map((ln, i) =>
-      `<tspan x="${cx}" dy="${i === 0 ? -(lines.length - 1) * 5.5 : 11}">${ln}</tspan>`
-    ).join('')
-    const door = r.type !== 'hallway' ? doorArc(r.x, r.y + r.height, r.width, 'bottom') : ''
-    return `<rect x="${r.x}" y="${r.y}" width="${r.width}" height="${r.height}"
-      fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
-    ${door}
-    <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle"
-      font-size="9" font-weight="600" font-family="system-ui,sans-serif" fill="#2A2A2A">
-      ${tspans}
-    </text>`
-  }).join('\n')
-
-  // Exterior outline — bold
-  const extStroke = `<rect x="${fp.x}" y="${fp.y}" width="${fp.width}" height="${fp.height}"
-    fill="none" stroke="#CCC" stroke-width="2.5" rx="1"/>`
-
-  // Dimension labels
-  const sqft = (state.sqft as number) || 2500
-  const beds  = (state.bedrooms as number) || 3
-  const baths = (state.bathrooms as number) || 2
-  const info = `${sqft.toLocaleString()} SF · ${beds} bed · ${baths} bath`
-
-  // North arrow
-  const northArrow = `<g transform="translate(472,22)">
-    <circle r="10" fill="none" stroke="#555" stroke-width="0.8"/>
-    <polygon points="0,-7 -2.5,2 0,0.5 2.5,2" fill="#C4A35A"/>
-    <text y="18" text-anchor="middle" font-size="7" font-family="system-ui" fill="#666">N</text>
-  </g>`
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 500 360">
-  <rect width="500" height="360" fill="#111" rx="8"/>
-  ${extStroke}
-  ${hallwaySVG}
-  ${roomsSVG}
-  ${northArrow}
-  <text x="250" y="352" text-anchor="middle" font-size="7" font-family="system-ui" fill="#555" letter-spacing="1">${info}</text>
-  <text x="12" y="352" font-size="6" font-family="system-ui" fill="#333" letter-spacing="1">BARNHAUS STEEL BUILDERS</text>
-</svg>`
+  return NextResponse.json({ imageUrl })
 }

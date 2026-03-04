@@ -22,8 +22,7 @@ export default function DesignFlow() {
   const [state, setState] = useState<DesignState>(initialState)
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [bubblePositions, setBubblePositions] = useState<Record<string, { x: number; y: number }>>({})
-  const [generatedSVG, setGeneratedSVG] = useState<string | null>(null)
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
 
   // Regenerate SVG whenever state changes
@@ -73,16 +72,16 @@ export default function DesignFlow() {
     setSaving(false)
   }
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (imageBase64: string) => {
     setGenerating(true)
     try {
       const res = await fetch('/api/generate-floorplan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bubblePositions, state }),
+        body: JSON.stringify({ imageBase64, state }),
       })
       const data = await res.json()
-      if (data.svg) setGeneratedSVG(data.svg)
+      if (data.imageUrl) setGeneratedImageUrl(data.imageUrl)
     } catch (e) { console.error(e) }
     setGenerating(false)
   }
@@ -191,8 +190,8 @@ export default function DesignFlow() {
           <p className="text-xs text-gray-600 uppercase tracking-widest mb-4 text-center">Arrange Your Rooms</p>
           <BubbleDiagram
             state={state}
-            onPositionsChange={setBubblePositions}
-            generatedSVG={generatedSVG || undefined}
+            onPositionsChange={() => {}}
+            generatedImageUrl={generatedImageUrl || undefined}
             onGenerate={handleGenerate}
             generating={generating}
           />
