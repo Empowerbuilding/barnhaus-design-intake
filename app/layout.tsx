@@ -1,39 +1,15 @@
-import type { Metadata } from "next";
-import localFont from "next/font/local";
-import "./globals.css";
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+import type { Metadata } from 'next'
+import './globals.css'
 
 export const metadata: Metadata = {
-  title: "Design Brief | Barnhaus Steel Builders",
-  description: "Help us understand your construction needs",
-  icons: {
-    icon: "https://hbfjdfxephlczkfgpceg.supabase.co/storage/v1/object/public/website/logos/logo1.png",
-    apple: "https://hbfjdfxephlczkfgpceg.supabase.co/storage/v1/object/public/website/logos/logo1.png",
-  },
-};
+  title: 'Design Your Home | Barnhaus Steel Builders',
+  description: 'Design your custom steel home with Barnhaus. Guided floor plan configurator with live preview.',
+}
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
-  );
+  )
 }
