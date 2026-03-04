@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { DesignState } from '@/lib/design-types'
-import { renderSVG } from '@/lib/floor-plan-renderer'
+import BubbleDiagram from '@/components/BubbleDiagram'
 import StepStyle from '@/components/design-flow/StepStyle'
 import StepSize from '@/components/design-flow/StepSize'
 import StepShape from '@/components/design-flow/StepShape'
@@ -20,14 +20,15 @@ const initialState: DesignState = { step: 1, priorities: [...DEFAULT_PRIORITIES]
 
 export default function DesignFlow() {
   const [state, setState] = useState<DesignState>(initialState)
-  const [svgMarkup, setSvgMarkup] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [bubblePositions, setBubblePositions] = useState<Record<string, { x: number; y: number }>>({})
+  const [generatedSVG, setGeneratedSVG] = useState<string | null>(null)
+  const [generating, setGenerating] = useState(false)
 
   // Regenerate SVG whenever state changes
   useEffect(() => {
     if (state.step >= 2) {
-      setSvgMarkup(renderSVG(state))
     }
   }, [state])
 
@@ -70,6 +71,20 @@ export default function DesignFlow() {
       setSubmitted(true)
     } catch {}
     setSaving(false)
+  }
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/generate-floorplan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bubblePositions, state }),
+      })
+      const data = await res.json()
+      if (data.svg) setGeneratedSVG(data.svg)
+    } catch (e) { console.error(e) }
+    setGenerating(false)
   }
 
   const canNext = (): boolean => {
@@ -171,27 +186,16 @@ export default function DesignFlow() {
           )}
         </div>
 
-        {/* Right: Floor Plan */}
-        <div className="lg:w-[45%] bg-[#111] lg:sticky lg:top-0 lg:h-screen flex flex-col items-center justify-center p-6 border-l border-white/10">
-          {state.step === 1 && !svgMarkup ? (
-            <div className="text-center text-gray-600">
-              <div className="text-6xl mb-4 opacity-30">⬛</div>
-              <p className="text-sm">Your floor plan will appear here as you design</p>
-            </div>
-          ) : (
-            <div className="w-full">
-              <p className="text-xs text-gray-500 text-center mb-3 uppercase tracking-widest">Live Floor Plan Preview</p>
-              <div
-                className="w-full bg-white rounded shadow-2xl"
-                dangerouslySetInnerHTML={{ __html: svgMarkup }}
-              />
-              {state.sqft && (
-                <p className="text-center text-xs text-gray-400 mt-3">
-                  ~{state.sqft?.toLocaleString()} SF · {state.bedrooms} bed · {state.bathrooms} bath
-                </p>
-              )}
-            </div>
-          )}
+        {/* Right: Bubble Diagram */}
+        <div className="lg:w-[45%] bg-[#0D0D0D] lg:sticky lg:top-0 lg:h-screen flex flex-col p-6 border-l border-white/10">
+          <p className="text-xs text-gray-600 uppercase tracking-widest mb-4 text-center">Arrange Your Rooms</p>
+          <BubbleDiagram
+            state={state}
+            onPositionsChange={setBubblePositions}
+            generatedSVG={generatedSVG || undefined}
+            onGenerate={handleGenerate}
+            generating={generating}
+          />
         </div>
       </div>
     </div>

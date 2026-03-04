@@ -32,6 +32,7 @@ export interface DesignState {
   priorities?: Priority[]
   garageCount?: GarageCount
   garageAttachment?: GarageAttachment
+  stories?: 1 | 2
   features?: Partial<Features>
   firstName?: string
   lastName?: string
