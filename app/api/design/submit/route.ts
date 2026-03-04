@@ -8,28 +8,27 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { sessionId, firstName, lastName, email, phone, ...rest } = body
+  const { sessionId, firstName, lastName, email, phone } = body
 
   const record = {
-    first_name: firstName,
-    last_name: lastName,
+    name: `${firstName} ${lastName}`.trim(),
     email,
     phone: phone || null,
     status: 'submitted',
-    updated_at: new Date().toISOString(),
+    submitted_at: new Date().toISOString(),
   }
 
   if (sessionId) {
-    await supabase.from('barnhaus_design_sessions').update(record).eq('id', sessionId)
+    await supabase.from('design_intake_submissions').update(record).eq('id', sessionId)
   } else {
-    await supabase.from('barnhaus_design_sessions').insert({ ...record, ...rest, status: 'submitted' })
+    await supabase.from('design_intake_submissions').insert(record)
   }
 
   // Fire n8n webhook (non-blocking)
   fetch('https://n8n.empowerbuilding.ai/webhook/barnhaus-design-submit', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId, firstName, lastName, email, phone, ...rest }),
+    body: JSON.stringify({ sessionId, ...record, ...body }),
   }).catch(() => {})
 
   return NextResponse.json({ ok: true })
