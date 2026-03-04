@@ -380,7 +380,7 @@ export async function POST(request: Request) {
       visionAnalysis.push({ image: img.name, url: img.url, ...analysis });
     }
 
-    // ── 7. Save to database ───────────────────────────────────────────────
+    // ── 7. Save to database (two-step: insert base cols, then update new cols) ──
     const { data, error } = await getSupabase()
       .from('design_intake_submissions')
       .insert([
@@ -398,31 +398,16 @@ export async function POST(request: Request) {
           aesthetic_style_custom: formDataObj.aestheticStyleCustom,
           living: formDataObj.living,
           patios: formDataObj.patios,
-          footprint_preset: formDataObj.footprintPreset,
-          footprint_width: formDataObj.footprintWidth,
-          footprint_depth: formDataObj.footprintDepth,
-          garage_cars: formDataObj.garageCars,
-          garage_type: formDataObj.garageType,
-          garage_load: formDataObj.garageLoad,
-          master_location: formDataObj.masterLocation,
-          l2_scope: formDataObj.l2Scope,
           bedrooms: formDataObj.bedrooms,
-          full_baths: formDataObj.fullBaths,
-          half_baths: formDataObj.halfBaths,
           desired_rooms: formDataObj.desiredRooms,
           kitchen_features: formDataObj.kitchenFeatures,
           master_bathroom: formDataObj.masterBathroom,
           master_closet: formDataObj.masterCloset,
           roof_style: formDataObj.roofStyle,
-          roof_pitch: formDataObj.roofPitch,
-          great_room_vaulted: formDataObj.greatRoomVaulted === 'yes',
-          secondary_ceiling_height: formDataObj.secondaryCeilingHeight,
-          master_ceiling_height: formDataObj.masterCeilingHeight,
           fireplace: formDataObj.fireplace,
           fireplace_type: formDataObj.fireplaceType,
           porch_locations: formDataObj.porchLocations,
           patios_covered: formDataObj.patiosCovered,
-          rear_patio_depth: formDataObj.rearPatioDepth,
           additional_items: formDataObj.additionalItems,
           unwanted_items: formDataObj.unwantedItems,
           pinterest_link: formDataObj.pinterestLink,
@@ -440,6 +425,33 @@ export async function POST(request: Request) {
         { success: false, message: 'Failed to save form data' },
         { status: 500 }
       );
+    }
+
+    // ── 7b. Update with new structural columns (schema cache workaround) ──
+    const { error: updateError } = await getSupabase()
+      .from('design_intake_submissions')
+      .update({
+        footprint_preset: formDataObj.footprintPreset,
+        footprint_width: formDataObj.footprintWidth ? parseInt(formDataObj.footprintWidth as string) : null,
+        footprint_depth: formDataObj.footprintDepth ? parseInt(formDataObj.footprintDepth as string) : null,
+        garage_cars: formDataObj.garageCars ? parseInt(formDataObj.garageCars as string) : null,
+        garage_type: formDataObj.garageType,
+        garage_load: formDataObj.garageLoad,
+        master_location: formDataObj.masterLocation,
+        l2_scope: formDataObj.l2Scope,
+        full_baths: formDataObj.fullBaths ? parseInt(formDataObj.fullBaths as string) : null,
+        half_baths: formDataObj.halfBaths ? parseInt(formDataObj.halfBaths as string) : null,
+        roof_pitch: formDataObj.roofPitch,
+        great_room_vaulted: formDataObj.greatRoomVaulted === 'yes',
+        secondary_ceiling_height: formDataObj.secondaryCeilingHeight ? parseInt(formDataObj.secondaryCeilingHeight as string) : null,
+        master_ceiling_height: formDataObj.masterCeilingHeight ? parseInt(formDataObj.masterCeilingHeight as string) : null,
+        rear_patio_depth: formDataObj.rearPatioDepth ? parseInt(formDataObj.rearPatioDepth as string) : null,
+      })
+      .eq('id', data[0].id);
+
+    if (updateError) {
+      console.error('Supabase update error (new columns):', updateError);
+      // Don't fail the whole submission — base data is saved
     }
 
     // ── 9. Send notification email + fire n8n webhook ─────────────────────
