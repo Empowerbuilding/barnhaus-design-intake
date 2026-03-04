@@ -540,17 +540,18 @@ export async function POST(request: Request) {
         secondary_ceiling_height: formDataObj.secondaryCeilingHeight ? parseInt(formDataObj.secondaryCeilingHeight as string) : null,
         master_ceiling_height: formDataObj.masterCeilingHeight ? parseInt(formDataObj.masterCeilingHeight as string) : null,
         rear_patio_depth: formDataObj.rearPatioDepth ? parseInt(formDataObj.rearPatioDepth as string) : null,
-        house_shape: formDataObj.houseShape,
-        kitchen_layout: formDataObj.kitchenLayout,
-        garage_roof_style: formDataObj.garageRoofStyle,
-        hallway_type: formDataObj.hallwayType,
+        house_shape: formDataObj.houseShape || null,
+        kitchen_layout: formDataObj.kitchenLayout || null,
+        main_roof_style: formDataObj.mainRoofStyle || null,
+        garage_roof_style: formDataObj.garageRoofStyle || null,
+        hallway_type: formDataObj.hallwayType || null,
         floor_plan_image_urls: uploadedFloorPlans.map(fp => fp.url),
       })
       .eq('id', data[0].id);
 
     if (updateError) {
       console.error('Supabase update error (new columns):', updateError);
-      // Don't fail the whole submission — base data is saved
+      // Log but don't fail — base data is saved
     }
 
     // ── 9. Send notification email + fire n8n webhook ─────────────────────
