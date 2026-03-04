@@ -79,7 +79,7 @@ function buildRoomList(state: DesignState): RoomDef[] {
   return rooms
 }
 
-function getFootprint(shape: string | undefined, sqft: number, garage: string): { w: number; d: number } {
+function getFootprint(shape: string | undefined, sqft: number, _garage: string): { w: number; d: number } {
   const ratio = 1.6
   const base = Math.sqrt(sqft / ratio)
   const w = base * ratio
@@ -96,7 +96,6 @@ function getFootprint(shape: string | undefined, sqft: number, garage: string): 
 function layoutRooms(state: DesignState, rooms: RoomDef[], fp: { w: number; d: number }, scale: number): Room[] {
   const street = state.streetFacing || 'S'
   const priorities = state.priorities || []
-  const shape = state.shape || 'rectangle'
   const garage = state.garageCount || 'none'
   const gAttach = state.garageAttachment || 'attached_left'
 
@@ -114,18 +113,18 @@ function layoutRooms(state: DesignState, rooms: RoomDef[], fp: { w: number; d: n
   const publicY = streetIsTop ? py : py + mainD * scale - mainD * scale * 0.4
   const privateY = streetIsTop ? py + mainD * scale * 0.55 : py
 
-  let col1X = px
-  let col2X = px + mainW * scale * 0.45
-  let col3X = px + mainW * scale * 0.75
+  const col1X = px
+  const col2X = px + mainW * scale * 0.45
+  const col3X = px + mainW * scale * 0.75
 
   const masterPriority = priorities.indexOf('master_privacy')
   const masterAtFar = masterPriority <= 1
 
   // Place rooms in zones
-  let publicCursor = { x: col1X, y: publicY }
-  let privateCursor = { x: col1X, y: privateY }
-  let masterCursor = { x: masterAtFar ? col3X : col2X, y: privateY }
-  let serviceCursor = { x: px, y: py + mainD * scale * 0.7 }
+  const publicCursor = { x: col1X, y: publicY }
+  const privateCursor = { x: col1X, y: privateY }
+  const masterCursor = { x: masterAtFar ? col3X : col2X, y: privateY }
+  const serviceCursor = { x: px, y: py + mainD * scale * 0.7 }
 
   for (const r of rooms) {
     const rw = Math.sqrt(r.sqft * 1.4) * scale
