@@ -28,11 +28,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (sessionId) {
-    await supabase.from('design_sessions').update(record).eq('id', sessionId)
+    await supabase.from('barnhaus_design_sessions').update(record).eq('id', sessionId)
     return NextResponse.json({ sessionId })
   } else {
     const { data, error } = await supabase
-      .from('design_sessions')
+      .from('barnhaus_design_sessions')
       .insert({ ...record, status: 'in_progress' })
       .select('id')
       .single()

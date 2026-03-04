@@ -10,13 +10,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params
   const body = await req.json()
   const { data: revisions } = await supabase
-    .from('design_revisions')
+    .from('barnhaus_design_revisions')
     .select('revision_number')
     .eq('session_id', id)
     .order('revision_number', { ascending: false })
     .limit(1)
   const nextRev = ((revisions?.[0]?.revision_number) || 0) + 1
-  await supabase.from('design_revisions').insert({
+  await supabase.from('barnhaus_design_revisions').insert({
     session_id: id,
     revision_number: nextRev,
     change_description: body.description,

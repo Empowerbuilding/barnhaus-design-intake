@@ -14,7 +14,7 @@ function checkAuth(req: NextRequest) {
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
-  const { data } = await supabase.from('design_sessions').select('*').eq('id', id).single()
+  const { data } = await supabase.from('barnhaus_design_sessions').select('*').eq('id', id).single()
   return NextResponse.json(data)
 }
 
@@ -22,6 +22,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await params
   const body = await req.json()
-  await supabase.from('design_sessions').update({ ...body, updated_at: new Date().toISOString() }).eq('id', id)
+  await supabase.from('barnhaus_design_sessions').update({ ...body, updated_at: new Date().toISOString() }).eq('id', id)
   return NextResponse.json({ ok: true })
 }
