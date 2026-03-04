@@ -121,6 +121,7 @@ interface FormData {
   // Step 2 — The Build
   stories: string;
   aestheticStyle: string;
+  houseShape: string;
   aestheticStyleCustom: string;
   living: string;
   patios: string;
@@ -138,10 +139,13 @@ interface FormData {
   halfBaths: string;
   desiredRooms: Record<string, boolean>;
   kitchenFeatures: Record<string, boolean>;
+  kitchenLayout: string;
   masterBathroom: Record<string, boolean>;
   masterCloset: Record<string, boolean>;
   // Step 4 — Architecture
-  roofStyle: string;
+  mainRoofStyle: string;
+  garageRoofStyle: string;
+  hallwayType: string;
   roofPitch: string;
   greatRoomVaulted: string;
   secondaryCeilingHeight: string;
@@ -156,6 +160,7 @@ interface FormData {
   unwantedItems: string;
   pinterestLink: string;
   inspirationImages: File[];
+  floorPlanImages: File[];
 }
 
 const INITIAL_FORM_DATA: FormData = {
@@ -170,6 +175,7 @@ const INITIAL_FORM_DATA: FormData = {
   stories: 'single',
   aestheticStyle: '',
   aestheticStyleCustom: '',
+  houseShape: '',
   living: '',
   patios: '',
   footprintPreset: '',
@@ -206,6 +212,7 @@ const INITIAL_FORM_DATA: FormData = {
     kitchenIsland: false,
     breakfastBar: false,
   },
+  kitchenLayout: '',
   masterBathroom: {
     walkInShower: false,
     customShowerSeat: false,
@@ -221,7 +228,9 @@ const INITIAL_FORM_DATA: FormData = {
     accessFromMasterBathroom: false,
     builtInDrawersAndShelving: false,
   },
-  roofStyle: 'gable',
+  mainRoofStyle: 'gable',
+  garageRoofStyle: 'match-main',
+  hallwayType: '',
   roofPitch: '3:12',
   greatRoomVaulted: '',
   secondaryCeilingHeight: '10',
@@ -243,6 +252,7 @@ const INITIAL_FORM_DATA: FormData = {
   unwantedItems: '',
   pinterestLink: '',
   inspirationImages: [],
+  floorPlanImages: [],
 };
 
 const STEP_LABELS = ['About You', 'The Build', 'Rooms', 'Architecture', 'Inspiration'];
@@ -298,7 +308,7 @@ const ConstructionForm = () => {
     try {
       const fd = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
-        if (key !== 'inspirationImages') {
+        if (key !== 'inspirationImages' && key !== 'floorPlanImages') {
           fd.append(key, typeof value === 'object' && value !== null ? JSON.stringify(value) : value.toString());
         }
       });
@@ -306,6 +316,9 @@ const ConstructionForm = () => {
       fd.append('_loadTime', formLoadedAt.current.toString());
       formData.inspirationImages.forEach((image, index) => {
         fd.append(`inspiration_image_${index}`, image);
+      });
+      formData.floorPlanImages.forEach((image, index) => {
+        fd.append(`floor_plan_image_${index}`, image);
       });
 
       const response = await fetch('/api/submit-form', { method: 'POST', body: fd });
@@ -460,6 +473,32 @@ const ConstructionForm = () => {
         )}
       </FormField>
 
+      <FormField label="House Shape">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {[
+            { value: 'rectangle', label: 'Simple Rectangle', desc: 'Easiest to build, most efficient' },
+            { value: 'l-shape', label: 'L-Shape', desc: 'Two wings, creates courtyard nook' },
+            { value: 'u-shape', label: 'U-Shape', desc: 'Three wings, wraparound courtyard' },
+            { value: 't-shape', label: 'T-Shape', desc: 'Front + rear wings, adds depth' },
+            { value: 'courtyard', label: 'Courtyard Wrap', desc: 'Interior courtyard focus' },
+          ].map(shape => (
+            <button
+              key={shape.value}
+              type="button"
+              onClick={() => setFormData(prev => ({ ...prev, houseShape: shape.value }))}
+              className={`p-3 rounded-lg border-2 text-left transition-all ${
+                formData.houseShape === shape.value
+                  ? 'border-[#D4A843] bg-amber-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="font-medium text-sm text-gray-900">{shape.label}</div>
+              <div className="text-xs text-gray-500 mt-1">{shape.desc}</div>
+            </button>
+          ))}
+        </div>
+      </FormField>
+
       <div className="space-y-4">
         <h3 className="text-sm font-medium text-gray-900">Garage</h3>
         <FormField label="Number of Cars">
@@ -580,6 +619,32 @@ const ConstructionForm = () => {
         />
       </FormField>
 
+      <FormField label="Kitchen Layout">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {[
+            { value: 'l-shape', label: 'L-Shape', desc: 'Two walls, open corner' },
+            { value: 'galley', label: 'Galley', desc: 'Two parallel walls, efficient flow' },
+            { value: 'u-shape', label: 'U-Shape', desc: 'Three walls, max storage' },
+            { value: 'one-wall', label: 'One Wall', desc: 'Linear, fully open plan' },
+            { value: 'island', label: 'Island Focus', desc: 'Island as primary workspace' },
+          ].map(layout => (
+            <button
+              key={layout.value}
+              type="button"
+              onClick={() => setFormData(prev => ({ ...prev, kitchenLayout: layout.value }))}
+              className={`p-3 rounded-lg border-2 text-left transition-all ${
+                formData.kitchenLayout === layout.value
+                  ? 'border-[#D4A843] bg-amber-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="font-medium text-sm text-gray-900">{layout.label}</div>
+              <div className="text-xs text-gray-500 mt-1">{layout.desc}</div>
+            </button>
+          ))}
+        </div>
+      </FormField>
+
       <FormField label="Master Bathroom Features">
         <CheckboxGroup
           section="masterBathroom"
@@ -617,19 +682,34 @@ const ConstructionForm = () => {
 
   const renderArchitecture = () => (
     <div className="space-y-6">
-      <FormField label="Roof Style">
-        <RadioGroup
-          name="roofStyle"
-          options={[
-            { label: 'Gable', value: 'gable' },
-            { label: 'Single Slope', value: 'single-slope' },
-            { label: 'Flat', value: 'flat' },
-            { label: 'Parapet Wall', value: 'parapet-wall' },
-          ]}
-          value={formData.roofStyle}
-          onChange={handleInputChange}
-        />
-      </FormField>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label="Main House Roof">
+          <RadioGroup
+            name="mainRoofStyle"
+            options={[
+              { label: 'Gable', value: 'gable' },
+              { label: 'Single Slope', value: 'single-slope' },
+              { label: 'Flat', value: 'flat' },
+              { label: 'Parapet Wall', value: 'parapet-wall' },
+            ]}
+            value={formData.mainRoofStyle}
+            onChange={handleInputChange}
+          />
+        </FormField>
+        <FormField label="Garage/Wing Roof">
+          <RadioGroup
+            name="garageRoofStyle"
+            options={[
+              { label: 'Gable', value: 'gable' },
+              { label: 'Single Slope', value: 'single-slope' },
+              { label: 'Flat', value: 'flat' },
+              { label: 'Match Main', value: 'match-main' },
+            ]}
+            value={formData.garageRoofStyle}
+            onChange={handleInputChange}
+          />
+        </FormField>
+      </div>
 
       <FormField label="Roof Pitch">
         <RadioGroup
@@ -651,6 +731,20 @@ const ConstructionForm = () => {
             onChange={handleInputChange}
           />
         </div>
+      </FormField>
+
+      <FormField label="Hallway Type">
+        <RadioGroup
+          name="hallwayType"
+          options={[
+            { label: 'Open Plan', value: 'open-plan' },
+            { label: 'Single Corridor', value: 'single-corridor' },
+            { label: 'Double-Loaded Corridor', value: 'double-loaded' },
+            { label: 'Gallery Hall', value: 'gallery' },
+          ]}
+          value={formData.hallwayType}
+          onChange={handleInputChange}
+        />
       </FormField>
 
       <FormField label="Vaulted ceiling in the great room?">
@@ -771,6 +865,14 @@ const ConstructionForm = () => {
       <FormField label="Pinterest Board Link">
         <p className="text-sm text-gray-600 mb-2">Share a board with your vision — exteriors, interiors, floor plans, kitchens, etc.</p>
         <TextInput name="pinterestLink" value={formData.pinterestLink} onChange={handleInputChange} placeholder="https://pinterest.com/..." />
+      </FormField>
+
+      <FormField label="Floor Plan Inspiration">
+        <p className="text-sm text-gray-600 mb-3">Upload floor plans you like — layouts, room arrangements, flow patterns. Our AI will study the spatial logic.</p>
+        <ImageUpload
+          onImagesChange={(images) => setFormData(prev => ({ ...prev, floorPlanImages: images }))}
+          maxImages={10}
+        />
       </FormField>
 
       <FormField label="Upload Inspiration Images">

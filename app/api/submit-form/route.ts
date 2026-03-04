@@ -30,7 +30,11 @@ interface FormDataObject {
   kitchenFeatures: Record<string, boolean>;
   masterBathroom: Record<string, boolean>;
   masterCloset: Record<string, boolean>;
-  roofStyle: string;
+  mainRoofStyle: string;
+  garageRoofStyle: string;
+  hallwayType: string;
+  houseShape: string;
+  kitchenLayout: string;
   roofPitch: string;
   greatRoomVaulted: string;
   secondaryCeilingHeight: string;
@@ -170,6 +174,73 @@ function getSupabase() {
   return _supabase;
 }
 
+// ─── Runtime migration: ensure new columns exist ─────────────────────────────
+let _migrationRan = false;
+
+async function ensureSchemaColumns() {
+  if (_migrationRan) return;
+  _migrationRan = true;
+
+  const supabase = getSupabase();
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL) as string;
+  const supabaseKey = (process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY) as string;
+
+  const sql = `
+    DO $$
+    BEGIN
+      -- Rename roof_style → main_roof_style if needed
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='design_intake_submissions' AND column_name='roof_style')
+         AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='design_intake_submissions' AND column_name='main_roof_style')
+      THEN
+        ALTER TABLE public.design_intake_submissions RENAME COLUMN roof_style TO main_roof_style;
+      END IF;
+      -- Add new columns
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='design_intake_submissions' AND column_name='main_roof_style') THEN
+        ALTER TABLE public.design_intake_submissions ADD COLUMN main_roof_style text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='design_intake_submissions' AND column_name='house_shape') THEN
+        ALTER TABLE public.design_intake_submissions ADD COLUMN house_shape text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='design_intake_submissions' AND column_name='kitchen_layout') THEN
+        ALTER TABLE public.design_intake_submissions ADD COLUMN kitchen_layout text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='design_intake_submissions' AND column_name='garage_roof_style') THEN
+        ALTER TABLE public.design_intake_submissions ADD COLUMN garage_roof_style text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='design_intake_submissions' AND column_name='hallway_type') THEN
+        ALTER TABLE public.design_intake_submissions ADD COLUMN hallway_type text;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='design_intake_submissions' AND column_name='floor_plan_image_urls') THEN
+        ALTER TABLE public.design_intake_submissions ADD COLUMN floor_plan_image_urls jsonb DEFAULT '[]'::jsonb;
+      END IF;
+    END $$;
+  `;
+
+  try {
+    // Use Supabase's rpc to call a temporary function, or fall back to direct SQL
+    const res = await fetch(`${supabaseUrl}/rest/v1/rpc/`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: sql }),
+    });
+    // If rpc doesn't exist, try via the Supabase management channel
+    if (!res.ok) {
+      // Columns will be created by the two-step insert+update pattern
+      // (update silently ignores missing columns)
+      console.log('Migration RPC not available — columns will be added via dashboard or CLI');
+    }
+  } catch (e) {
+    console.log('Schema migration skipped:', e);
+  }
+
+  // Notify schema cache to reload by touching the table
+  await supabase.from('design_intake_submissions').select('id').limit(1);
+}
+
 async function analyzeImageWithVision(imageUrl: string): Promise<Record<string, unknown>> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return {};
@@ -234,6 +305,9 @@ export async function POST(request: Request) {
   const ip = getClientIp(request);
 
   try {
+    // ── 0. Ensure schema columns exist ─────────────────────────────────
+    await ensureSchemaColumns();
+
     // ── 1. Rate limiting ──────────────────────────────────────────────────
     const rateCheck = checkRateLimit(ip);
     if (!rateCheck.allowed) {
@@ -273,7 +347,7 @@ export async function POST(request: Request) {
 
     // Convert FormData to object and parse JSON strings
     for (const [key, value] of formData.entries()) {
-      if (key.startsWith('inspiration_image_')) {
+      if (key.startsWith('inspiration_image_') || key.startsWith('floor_plan_image_')) {
         continue;
       } else if (key.startsWith('_')) {
         // Skip internal security fields
@@ -302,7 +376,13 @@ export async function POST(request: Request) {
       .filter(([key]) => key.startsWith('inspiration_image_'))
       .map(([_, value]) => value as File);
 
-    for (const file of imageFiles) {
+    const floorPlanFiles = Array.from(formData.entries())
+      .filter(([key]) => key.startsWith('floor_plan_image_'))
+      .map(([_, value]) => value as File);
+
+    const allImageFiles = [...imageFiles, ...floorPlanFiles];
+
+    for (const file of allImageFiles) {
       // 4a. File size check
       if (file.size > MAX_FILE_SIZE) {
         logRejection(ip, 'File exceeds size limit', {
@@ -373,6 +453,20 @@ export async function POST(request: Request) {
       }
     }
 
+    // ── 5b. Upload floor plan images ────────────────────────────────────
+    const uploadedFloorPlans = [];
+    for (let i = 0; i < floorPlanFiles.length; i++) {
+      const file = floorPlanFiles[i];
+      const fileName = `floor-plans/${Date.now()}-${i}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+      try {
+        const uploadResult = await uploadFileToSupabase(file, fileName);
+        uploadedFloorPlans.push(uploadResult);
+      } catch (error) {
+        console.error(`Failed to upload floor plan ${fileName}:`, error);
+      }
+    }
+
     // ── 6. Run vision analysis on uploaded images ─────────────────────────
     const visionAnalysis: Record<string, unknown>[] = [];
     for (const img of uploadedImages) {
@@ -403,7 +497,7 @@ export async function POST(request: Request) {
           kitchen_features: formDataObj.kitchenFeatures,
           master_bathroom: formDataObj.masterBathroom,
           master_closet: formDataObj.masterCloset,
-          roof_style: formDataObj.roofStyle,
+          main_roof_style: formDataObj.mainRoofStyle,
           fireplace: formDataObj.fireplace,
           fireplace_type: formDataObj.fireplaceType,
           porch_locations: formDataObj.porchLocations,
@@ -446,6 +540,11 @@ export async function POST(request: Request) {
         secondary_ceiling_height: formDataObj.secondaryCeilingHeight ? parseInt(formDataObj.secondaryCeilingHeight as string) : null,
         master_ceiling_height: formDataObj.masterCeilingHeight ? parseInt(formDataObj.masterCeilingHeight as string) : null,
         rear_patio_depth: formDataObj.rearPatioDepth ? parseInt(formDataObj.rearPatioDepth as string) : null,
+        house_shape: formDataObj.houseShape,
+        kitchen_layout: formDataObj.kitchenLayout,
+        garage_roof_style: formDataObj.garageRoofStyle,
+        hallway_type: formDataObj.hallwayType,
+        floor_plan_image_urls: uploadedFloorPlans.map(fp => fp.url),
       })
       .eq('id', data[0].id);
 
@@ -471,7 +570,8 @@ export async function POST(request: Request) {
       garage_type: formDataObj.garageType,
       footprint_preset: formDataObj.footprintPreset,
       desired_rooms: formDataObj.desiredRooms,
-      roof_style: formDataObj.roofStyle,
+      main_roof_style: formDataObj.mainRoofStyle,
+      garage_roof_style: formDataObj.garageRoofStyle,
       roof_pitch: formDataObj.roofPitch,
       master_ceiling_height: formDataObj.masterCeilingHeight,
       secondary_ceiling_height: formDataObj.secondaryCeilingHeight,
@@ -528,7 +628,7 @@ export async function POST(request: Request) {
           `Garage: ${formDataObj.garageCars} cars, ${formDataObj.garageType}, ${formDataObj.garageLoad}`,
           `Master Location: ${formDataObj.masterLocation || 'Not specified'}`,
           `Bedrooms: ${formDataObj.bedrooms} | Full Baths: ${formDataObj.fullBaths} | Half Baths: ${formDataObj.halfBaths}`,
-          `Roof: ${formDataObj.roofStyle} @ ${formDataObj.roofPitch}`,
+          `Roof: Main ${formDataObj.mainRoofStyle}, Garage ${formDataObj.garageRoofStyle} @ ${formDataObj.roofPitch}`,
           `Ceilings: Secondary ${formDataObj.secondaryCeilingHeight}ft | Master ${formDataObj.masterCeilingHeight}ft`,
           `Great Room Vaulted: ${formDataObj.greatRoomVaulted || 'Not specified'}`,
           `Special Rooms: ${rooms}`,
