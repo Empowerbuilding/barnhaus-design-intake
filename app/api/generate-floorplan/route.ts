@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     .map(([id, pos]) => `- ${id}: (${Math.round(pos.x)}, ${Math.round(pos.y)})`)
     .join('\n')
 
-  const prompt = `You are an expert residential architect creating a floor plan layout.
+  const prompt = `You are an expert residential floor plan layout engine.
 
 House specs:
 - Total: ${state.sqft || 2500} SF, ${state.bedrooms || 3} bed, ${state.bathrooms || 2} bath
@@ -30,16 +30,21 @@ Return a JSON object with this exact structure — NO markdown, NO explanation, 
   ]
 }
 
-Rules:
-- All coordinates in SVG units within a 500x360 viewport
-- Leave ~30px padding on all sides
-- Rooms must NOT overlap each other
-- Rooms must fit inside the footprint (except garage and porches)
-- Add at least one hallway rectangle connecting bedrooms
-- Master suite should be private/away from street
-- Garage attaches to exterior
-- Keep adjacency from the bubble positions (rooms that were close should stay close)
-- Typical room sizes in this viewport: Great Room ~110x70, Kitchen ~80x60, Master Bed ~90x65, Secondary Bed ~75x55, Bath ~50x45, Garage ~90x65, Hallway ~20x80`
+CRITICAL RULES — follow exactly:
+- All coords in SVG units, viewport 500x360
+- Footprint: x:30, y:25, width:380, height:290 (rooms go inside this box)
+- Garage and porch can be outside footprint, attached to edges
+- Rooms MUST NOT overlap — check every room against every other
+- Use a simple grid approach: divide footprint into zones
+  - Top-right zone (x:260-410, y:25-160): Master Bed + Master Bath + WIC
+  - Center zone (x:30-260, y:25-170): Great Room, Kitchen, Dining
+  - Bottom zone (x:30-410, y:170-315): Secondary bedrooms + bathrooms + hallway + laundry
+- Hallway: a ~18px wide horizontal or vertical strip connecting bedroom zone to living zone
+- Typical sizes (width x height): Great Room 120x90, Kitchen 90x70, Dining 80x60,
+  Master Bed 100x80, Master Bath 70x55, WIC 55x45, Secondary Bed 85x70, Bath 60x50,
+  Laundry 55x45, Utility 50x40, Hallway 18x150 or 120x18, Garage 100x75
+- Place rooms edge-to-edge with no gaps inside the footprint
+- Return ONLY valid JSON, no explanation`
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'No API key' }, { status: 500 })

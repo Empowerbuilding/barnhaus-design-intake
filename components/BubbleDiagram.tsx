@@ -38,23 +38,26 @@ function buildBubbles(state: DesignState): Bubble[] {
   const feats = state.features || {}
 
   const list: Bubble[] = [
-    { id: 'great_room',   label: 'Great Room',   r: 52, type: 'living',  x: 240, y: 160 },
-    { id: 'kitchen',      label: 'Kitchen',       r: 42, type: 'kitchen', x: 140, y: 200 },
-    { id: 'dining',       label: 'Dining',        r: 34, type: 'kitchen', x: 150, y: 290 },
-    { id: 'master_bed',   label: 'Master Bed',    r: 48, type: 'master',  x: 390, y: 120 },
-    { id: 'master_bath',  label: 'Master Bath',   r: 30, type: 'bath',    x: 430, y: 220 },
-    { id: 'wic',          label: 'W.I.C.',        r: 24, type: 'service', x: 390, y: 270 },
-    { id: 'laundry',      label: 'Laundry',       r: 22, type: 'service', x: 90,  y: 310 },
-    { id: 'utility',      label: 'Utility',       r: 18, type: 'service', x: 50,  y: 240 },
+    { id: 'great_room',   label: 'Great Room',   r: 52, type: 'living',  x: 250, y: 170 },
+    { id: 'kitchen',      label: 'Kitchen',       r: 42, type: 'kitchen', x: 130, y: 190 },
+    { id: 'dining',       label: 'Dining',        r: 34, type: 'kitchen', x: 130, y: 300 },
+    { id: 'master_bed',   label: 'Master Bed',    r: 48, type: 'master',  x: 400, y: 100 },
+    { id: 'master_bath',  label: 'Master Bath',   r: 30, type: 'bath',    x: 450, y: 200 },
+    { id: 'wic',          label: 'W.I.C.',        r: 24, type: 'service', x: 430, y: 290 },
+    { id: 'laundry',      label: 'Laundry',       r: 22, type: 'service', x: 60,  y: 300 },
+    { id: 'utility',      label: 'Utility',       r: 22, type: 'service', x: 55,  y: 230 },
   ]
 
+  const bedStartX = [240, 320, 160, 400, 80]
+  const bedStartY = [50,  60,  55,  55,  60]
   for (let i = 2; i <= beds; i++) {
     list.push({ id: `bed_${i}`, label: `Bed ${i}`, r: 38, type: 'bedroom',
-      x: 100 + (i - 2) * 90, y: 80 + (i % 2) * 30 })
+      x: bedStartX[(i - 2) % bedStartX.length],
+      y: bedStartY[(i - 2) % bedStartY.length] })
   }
   for (let i = 2; i <= Math.floor(baths); i++) {
     list.push({ id: `bath_${i}`, label: `Bath ${i}`, r: 24, type: 'bath',
-      x: 310 + (i - 2) * 60, y: 300 })
+      x: 300 + (i - 2) * 65, y: 310 })
   }
   if (garage !== 'none') {
     const label = garage === '3-car' ? '3-Car Garage' : garage === '2-car' ? '2-Car Garage' : 'Garage'
@@ -87,7 +90,7 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedSVG, 
   const prevGarage  = useRef(state.garageCount)
   const prevFeats   = useRef(JSON.stringify(state.features))
 
-  // Rebuild if rooms change
+  // Merge new rooms in while preserving existing positions
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const featsStr = JSON.stringify(state.features)
@@ -97,7 +100,17 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedSVG, 
       prevBaths.current = state.bathrooms
       prevGarage.current = state.garageCount
       prevFeats.current = featsStr
-      setBubbles(buildBubbles(state))
+      const newTemplate = buildBubbles(state)
+      setBubbles(prev => {
+        const posMap = Object.fromEntries(prev.map(b => [b.id, { x: b.x, y: b.y }]))
+        // Keep existing positions, add new rooms with default positions, remove stale rooms
+        const newIds = new Set(newTemplate.map(b => b.id))
+        return newTemplate.map(b => ({
+          ...b,
+          x: posMap[b.id]?.x ?? b.x,
+          y: posMap[b.id]?.y ?? b.y,
+        })).filter(b => newIds.has(b.id))
+      })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.bedrooms, state.bathrooms, state.garageCount, state.features])
