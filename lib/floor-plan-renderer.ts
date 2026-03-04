@@ -1,243 +1,207 @@
-import { DesignState, FloorPlanLayout, Room } from './design-types'
+import { DesignState, FloorPlanLayout } from './design-types'
 
 const VP_W = 500
 const VP_H = 380
-const PAD = 36
 
-function roomColor(type: Room['type']): string {
-  const colors: Partial<Record<Room['type'], string>> = {
-    master: '#EDE8E0', bath: '#E4ECF0', garage: '#E8E8E8',
-    porch: '#E8F0E4', kitchen: '#F0EBE0', closet: '#F0EDE8',
-  }
-  return colors[type] || '#F4F4F0'
+export function generateLayout(state: DesignState): FloorPlanLayout {
+  return { rooms: [], footprintWidth: state.sqft ? Math.sqrt((state.sqft || 2500) / 1.6) * 1.6 : 50,
+    footprintDepth: Math.sqrt((state.sqft || 2500) / 1.6), totalSqft: state.sqft || 2500,
+    viewportWidth: VP_W, viewportHeight: VP_H, scale: 1 }
 }
 
-// Scale footprint to fit viewport, return scale factor
-function calcScale(fw: number, fd: number, garageW: number): number {
-  const availW = VP_W - PAD * 2 - garageW
-  const availH = VP_H - PAD * 2
-  return Math.min(availW / fw, availH / fd)
+// ── Zone bubble diagram (like Michael's hand-drawn circles) ──────────────────
+
+interface Zone {
+  id: string
+  label: string
+  sub?: string
+  cx: number; cy: number; rx: number; ry: number
+  fill: string; stroke: string
 }
 
-// Get outer footprint dimensions in feet based on sqft + shape
-function footprint(sqft: number, shape: string): { w: number; d: number } {
-  const ratio = 1.65
-  const base = Math.sqrt(sqft / ratio)
-  const w = base * ratio, d = base
-  switch (shape) {
-    case 'l-shape':   return { w: w * 0.82, d: d * 1.1 }
-    case 't-shape':   return { w: w * 0.92, d: d * 1.15 }
-    case 'u-shape':   return { w: w * 0.88, d: d * 1.2 }
-    case 'courtyard': return { w: w * 0.95, d: d * 1.1 }
-    default:          return { w, d }
-  }
-}
+function buildZones(state: DesignState): Zone[] {
+  const sqft   = state.sqft || 2500
+  const beds   = state.bedrooms || 3
+  const shape  = state.shape || 'rectangle'
+  const garage = state.garageCount || 'none'
+  const attach = state.garageAttachment || 'attached_left'
+  const prios  = state.priorities || []
+  const feats  = state.features || {}
+  const masterPrivacy = prios[0] === 'master_privacy' || prios[1] === 'master_privacy'
+  const openLiving    = prios[0] === 'open_living'    || prios[1] === 'open_living'
 
-// Build a clean grid-based room layout that stays inside the footprint
-function buildLayout(state: DesignState): Room[] {
-  const sqft    = state.sqft    || 2500
-  const beds    = state.bedrooms || 3
-  const baths   = state.bathrooms || 2
-  const shape   = state.shape   || 'rectangle'
-  const garage  = state.garageCount || 'none'
-  const attach  = state.garageAttachment || 'attached_left'
-  const feats   = state.features || {}
-  const prios   = state.priorities || []
+  // Scale all bubbles relative to sqft
+  const s = Math.sqrt(sqft / 2500)
 
-  const openLiving = prios[0] === 'open_living' || prios[1] === 'open_living'
-  const { w: FW, d: FD } = footprint(sqft, shape)
-  const garageW = garage === '3-car' ? 36 : garage === '2-car' ? 24 : garage === '1-car' ? 14 : 0
-  const garageD = 22
-  const scale   = calcScale(FW, FD, garageW > 0 ? garageW + 2 : 0)
+  // Center of canvas with room for labels
+  const cx = VP_W * 0.46
+  const cy = VP_H * 0.50
 
-  const ox = PAD + (garage !== 'none' && attach === 'attached_left' ? garageW * scale + 4 : 0)
-  const oy = PAD
-  const W  = FW * scale
-  const H  = FD * scale
+  // Core sizes
+  const livingR  = { rx: 80 * s, ry: 56 * s }
+  const masterR  = { rx: 58 * s, ry: 42 * s }
+  const bedsR    = { rx: 54 * s, ry: 38 * s }
+  const kitchenR = { rx: 50 * s, ry: 36 * s }
+  const garageR  = { rx: 44,     ry: 32 }
 
-  const rooms: Room[] = []
+  const zones: Zone[] = []
 
-  // ── Zone splits (fractions of footprint) ──────────────────────────────────
-  // Top row: public (living/kitchen) — left 65%
-  // Top row: master suite — right 35%
-  // Bottom row: bedrooms + service — full width
+  // ── Shape influences layout ──────────────────────────────────────────────
+  // Rectangle / default: linear left→right
+  // L-shape: L arrangement
+  // U-shape: U arrangement (master top-right, beds top-left, living center)
+  // Courtyard: ring arrangement
 
-  const topH   = H * 0.52
-  const btmH   = H - topH
-  const pubW   = W * (openLiving ? 0.68 : 0.60)
-  const masterW = W - pubW
+  const isU  = shape === 'u-shape'
+  const isL  = shape === 'l-shape'
+  const isCY = shape === 'courtyard'
 
-  // Living area
-  const livingH = openLiving ? topH : topH * 0.65
-  rooms.push({ id: 'great_room', label: 'Great Room', sqft: Math.round((pubW / scale) * (livingH / scale)),
-    x: ox, y: oy, width: pubW, height: livingH, type: 'living' })
+  // Living / Great Room — always central-ish
+  const livingCX = isCY ? cx : isU ? cx : cx - 10 * s
+  const livingCY = isCY ? cy - 10 : isU ? cy + 20 * s : cy
 
+  zones.push({ id: 'living', label: openLiving ? 'Great Room' : 'Living',
+    sub: openLiving ? '+ Kitchen' : undefined,
+    cx: livingCX, cy: livingCY, ...livingR,
+    fill: '#F5EDD6', stroke: '#C4A35A' })
+
+  // Kitchen — adjacent to living, slightly offset
   if (!openLiving) {
-    const kitH = topH - livingH
-    rooms.push({ id: 'kitchen', label: 'Kitchen', sqft: Math.round((pubW * 0.55 / scale) * (kitH / scale)),
-      x: ox, y: oy + livingH, width: pubW * 0.55, height: kitH, type: 'kitchen' })
-    rooms.push({ id: 'dining', label: 'Dining', sqft: Math.round((pubW * 0.45 / scale) * (kitH / scale)),
-      x: ox + pubW * 0.55, y: oy + livingH, width: pubW * 0.45, height: kitH, type: 'dining' })
-  } else {
-    rooms.push({ id: 'kitchen', label: 'Kitchen', sqft: Math.round((pubW * 0.42 / scale) * (topH / scale)),
-      x: ox, y: oy, width: pubW * 0.42, height: topH, type: 'kitchen' })
-    rooms.push({ id: 'great_room', label: 'Great Room', sqft: Math.round((pubW * 0.58 / scale) * (topH / scale)),
-      x: ox + pubW * 0.42, y: oy, width: pubW * 0.58, height: topH, type: 'living' })
+    zones.push({ id: 'kitchen', label: 'Kitchen',
+      cx: livingCX - livingR.rx * 0.85, cy: livingCY + livingR.ry * 0.65,
+      rx: kitchenR.rx, ry: kitchenR.ry,
+      fill: '#EDE8DC', stroke: '#B89B56' })
   }
 
-  // Master suite (top right)
-  const mBedH  = topH * 0.60
-  const mBathH = topH * 0.24
-  const mClosH = topH - mBedH - mBathH
-  rooms.push({ id: 'master_bed',    label: 'Master Bed',  sqft: Math.round((masterW / scale) * (mBedH / scale)),
-    x: ox + pubW, y: oy,                  width: masterW, height: mBedH,  type: 'master' })
-  rooms.push({ id: 'master_bath',   label: 'Master Bath', sqft: Math.round((masterW / scale) * (mBathH / scale)),
-    x: ox + pubW, y: oy + mBedH,          width: masterW, height: mBathH, type: 'bath' })
-  rooms.push({ id: 'master_closet', label: 'W.I.C.',      sqft: Math.round((masterW / scale) * (mClosH / scale)),
-    x: ox + pubW, y: oy + mBedH + mBathH, width: masterW, height: mClosH, type: 'closet' })
+  // Master suite — private end
+  const masterCX = masterPrivacy
+    ? (isU ? cx + 80 * s : isL ? cx + 95 * s : cx + 95 * s)
+    : (isU ? cx + 80 * s : cx + 90 * s)
+  const masterCY = isU ? cy - 55 * s : isL ? cy - 30 * s : cy - 10 * s
 
-  // Bottom row: secondary beds + service
-  const secBedCount = Math.max(0, beds - 1)
-  const serviceW = W * 0.22
-  const bedsW    = W - serviceW
-  const bedW     = secBedCount > 0 ? bedsW / secBedCount : bedsW
+  zones.push({ id: 'master', label: 'Master Suite',
+    cx: masterCX, cy: masterCY, ...masterR,
+    fill: '#EBE4D8', stroke: '#A08848' })
 
-  for (let i = 0; i < secBedCount; i++) {
-    rooms.push({ id: `bed_${i + 2}`, label: `Bed ${i + 2}`, sqft: Math.round((bedW / scale) * (btmH / scale)),
-      x: ox + i * bedW, y: oy + topH, width: bedW, height: btmH, type: 'bedroom' })
-  }
+  // Bedrooms — clustered opposite master
+  const bedsCX = isU ? cx - 75 * s : isL ? cx - 80 * s : cx - 85 * s
+  const bedsCY = isU ? cy - 55 * s : isL ? cy + 30 * s : cy + 30 * s
+  const bedsLabel = beds > 3 ? `${beds - 1} Bedrooms` : beds > 2 ? '2 Bedrooms' : 'Bedroom'
 
-  // Service zone (bottom right)
-  const svcX = ox + bedsW
-  const bathCount = Math.max(1, Math.floor(baths) - 1)
-  const bathH = btmH / (bathCount + 1)
-  for (let i = 0; i < bathCount; i++) {
-    rooms.push({ id: `bath_${i + 2}`, label: `Bath ${i + 2}`, sqft: Math.round((serviceW / scale) * (bathH / scale)),
-      x: svcX, y: oy + topH + i * bathH, width: serviceW, height: bathH, type: 'bath' })
-  }
-  rooms.push({ id: 'laundry', label: 'Laundry', sqft: Math.round((serviceW / scale) * (bathH / scale)),
-    x: svcX, y: oy + topH + bathCount * bathH, width: serviceW, height: bathH, type: 'laundry' })
-
-  // Porches
-  if (feats.covered_front_porch) {
-    const ph = 14 * scale
-    rooms.push({ id: 'front_porch', label: 'Front Porch', sqft: Math.round((W * 0.45 / scale) * 14),
-      x: ox + W * 0.15, y: oy - ph - 2, width: W * 0.45, height: ph, type: 'porch' })
-  }
-  if (feats.covered_back_porch) {
-    const ph = 12 * scale
-    rooms.push({ id: 'back_porch', label: 'Covered Porch', sqft: Math.round((W * 0.5 / scale) * 12),
-      x: ox + W * 0.2, y: oy + H + 2, width: W * 0.5, height: ph, type: 'porch' })
-  }
+  zones.push({ id: 'beds', label: bedsLabel,
+    cx: bedsCX, cy: bedsCY, ...bedsR,
+    fill: '#E8E4DC', stroke: '#9A9080' })
 
   // Garage
   if (garage !== 'none') {
-    const gx = attach === 'attached_right' ? ox + W + 2 : ox - garageW * scale - 2
-    rooms.push({ id: 'garage', label: 'Garage', sqft: Math.round(garageW * garageD),
-      x: gx, y: oy, width: garageW * scale, height: garageD * scale, type: 'garage' })
+    const carLabel = garage === '3-car' ? '3-Car Garage' : garage === '2-car' ? '2-Car Garage' : '1-Car Garage'
+    const gx = attach === 'attached_right'
+      ? livingCX + livingR.rx + garageR.rx * 0.7
+      : livingCX - livingR.rx - garageR.rx * 0.7
+    zones.push({ id: 'garage', label: carLabel,
+      cx: gx, cy: livingCY + 20,
+      ...garageR, fill: '#E0E0DC', stroke: '#888880' })
   }
 
-  return rooms
+  // Porch
+  if (feats.covered_front_porch) {
+    zones.push({ id: 'porch', label: 'Front Porch',
+      cx: livingCX, cy: livingCY + livingR.ry + 26,
+      rx: 55, ry: 20, fill: '#E8EDDF', stroke: '#7A9060' })
+  }
+  if (feats.covered_back_porch) {
+    zones.push({ id: 'backporch', label: 'Back Porch',
+      cx: livingCX, cy: livingCY - livingR.ry - 26,
+      rx: 50, ry: 18, fill: '#E8EDDF', stroke: '#7A9060' })
+  }
+
+  // Utility / Service zone (small, tucked near bedrooms)
+  zones.push({ id: 'service', label: 'Utility',
+    cx: (bedsCX + livingCX) / 2, cy: bedsCY + bedsR.ry * 0.8,
+    rx: 28, ry: 20, fill: '#DDDBD8', stroke: '#888' })
+
+  return zones
 }
 
-export function generateLayout(state: DesignState): FloorPlanLayout {
-  const sqft  = state.sqft || 2500
-  const shape = state.shape || 'rectangle'
-  const garage = state.garageCount || 'none'
-  const garageW = garage === '3-car' ? 36 : garage === '2-car' ? 24 : garage === '1-car' ? 14 : 0
-  const fp    = footprint(sqft, shape)
-  const scale = calcScale(fp.w, fp.d, garageW > 0 ? garageW + 2 : 0)
-  const rooms = buildLayout(state)
-  return { rooms, footprintWidth: fp.w, footprintDepth: fp.d, totalSqft: sqft, viewportWidth: VP_W, viewportHeight: VP_H, scale }
+// Draw connection lines between adjacent zones (bubble diagram style)
+function connectionLine(a: Zone, b: Zone, opacity: number): string {
+  return `<line x1="${a.cx.toFixed(1)}" y1="${a.cy.toFixed(1)}"
+    x2="${b.cx.toFixed(1)}" y2="${b.cy.toFixed(1)}"
+    stroke="#CCC" stroke-width="12" stroke-linecap="round" opacity="${opacity}"/>`
 }
 
 export function renderSVG(state: DesignState): string {
-  // Don't render until at least size is chosen (step >= 2 with values)
-  if (!state.sqft && !state.shape) return ''
+  // Nothing until sqft is chosen
+  if (!state.sqft) return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ${VP_W} ${VP_H}">
+    <rect width="${VP_W}" height="${VP_H}" fill="#111" rx="8"/>
+    <text x="${VP_W/2}" y="${VP_H/2 - 10}" text-anchor="middle" font-size="13" font-family="system-ui" fill="#555">Your zone diagram will appear</text>
+    <text x="${VP_W/2}" y="${VP_H/2 + 10}" text-anchor="middle" font-size="13" font-family="system-ui" fill="#555">as you design your home.</text>
+  </svg>`
 
-  const sqft  = state.sqft || 2500
-  const shape = state.shape || 'rectangle'
-  const garage = state.garageCount || 'none'
-  const attach = state.garageAttachment || 'attached_left'
-  const garageW = garage === '3-car' ? 36 : garage === '2-car' ? 24 : garage === '1-car' ? 14 : 0
-  const fp    = footprint(sqft, shape)
-  const scale = calcScale(fp.w, fp.d, garageW > 0 ? garageW + 2 : 0)
+  const zones = buildZones(state)
 
-  const ox = PAD + (garage !== 'none' && attach === 'attached_left' ? garageW * scale + 4 : 0)
-  const oy = PAD
-  const W  = fp.w * scale
-  const H  = fp.d * scale
+  // Connection lines (drawn first, behind bubbles)
+  const living  = zones.find(z => z.id === 'living')
+  const master  = zones.find(z => z.id === 'master')
+  const beds    = zones.find(z => z.id === 'beds')
+  const kitchen = zones.find(z => z.id === 'kitchen')
+  const garage  = zones.find(z => z.id === 'garage')
+  const service = zones.find(z => z.id === 'service')
 
-  // Only show rooms if we have enough info (step 3+)
-  const showRooms = !!(state.bedrooms && state.shape)
-  const rooms = showRooms ? buildLayout(state) : []
+  const lines = [
+    living && master  ? connectionLine(living, master, 0.5)  : '',
+    living && beds    ? connectionLine(living, beds, 0.5)    : '',
+    living && kitchen ? connectionLine(living, kitchen, 0.6) : '',
+    living && garage  ? connectionLine(living, garage, 0.4)  : '',
+    beds   && service ? connectionLine(beds, service, 0.4)   : '',
+  ].filter(Boolean).join('\n')
 
-  const roomsSVG = rooms.map(r => {
-    const cx = r.x + r.width / 2
-    const cy = r.y + r.height / 2
-    const lines = r.label.split(' ')
-    const tspans = lines.map((ln, i) =>
-      `<tspan x="${cx.toFixed(1)}" dy="${i === 0 ? -(lines.length - 1) * 5 : 10}">${ln}</tspan>`
-    ).join('')
+  // Bubbles
+  const bubbles = zones.map(z => {
+    const labelLines = z.label.split(' ')
+    const lineH = 11
+    const totalH = (labelLines.length + (z.sub ? 1 : 0)) * lineH
+    const startY = z.cy - totalH / 2 + lineH / 2
 
-    return `<rect x="${r.x.toFixed(1)}" y="${r.y.toFixed(1)}" width="${r.width.toFixed(1)}" height="${r.height.toFixed(1)}"
-      fill="${roomColor(r.type)}" stroke="#555" stroke-width="0.8" rx="1"/>
-    <text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle"
-      font-size="7.5" font-family="system-ui,sans-serif" fill="#333" dominant-baseline="middle">
-      ${tspans}
-      <tspan x="${cx.toFixed(1)}" dy="11" font-size="6.5" fill="#888">${r.sqft} sf</tspan>
+    const textLines = [
+      ...labelLines.map((ln, i) =>
+        `<tspan x="${z.cx.toFixed(1)}" dy="${i === 0 ? 0 : lineH}">${ln}</tspan>`),
+      ...(z.sub ? [`<tspan x="${z.cx.toFixed(1)}" dy="${lineH}" font-size="8" fill="#888">${z.sub}</tspan>`] : [])
+    ].join('')
+
+    return `<ellipse cx="${z.cx.toFixed(1)}" cy="${z.cy.toFixed(1)}" rx="${z.rx.toFixed(1)}" ry="${z.ry.toFixed(1)}"
+      fill="${z.fill}" stroke="${z.stroke}" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.92"/>
+    <text x="${z.cx.toFixed(1)}" y="${(startY).toFixed(1)}" text-anchor="middle"
+      font-size="9.5" font-weight="600" font-family="system-ui,sans-serif" fill="#2A2A2A" dominant-baseline="middle">
+      ${textLines}
     </text>`
   }).join('\n')
 
-  // Exterior outline path
-  const outlinePath = shapeOutline(shape, ox, oy, W, H)
-
-  // Dimensions
-  const dimW = `<line x1="${ox}" y1="${oy - 10}" x2="${ox + W}" y2="${oy - 10}" stroke="#999" stroke-width="0.7"/>
-    <text x="${ox + W / 2}" y="${oy - 14}" text-anchor="middle" font-size="8" font-family="system-ui" fill="#888">${fp.w.toFixed(0)}'</text>`
-  const dimD = `<line x1="${ox - 10}" y1="${oy}" x2="${ox - 10}" y2="${oy + H}" stroke="#999" stroke-width="0.7"/>
-    <text x="${ox - 14}" y="${oy + H / 2}" text-anchor="middle" font-size="8" font-family="system-ui" fill="#888"
-      transform="rotate(-90 ${ox - 14} ${oy + H / 2})">${fp.d.toFixed(0)}'</text>`
-
-  // North arrow
-  const northArrow = `<g transform="translate(${VP_W - 24},22)">
-    <circle cx="0" cy="0" r="9" fill="none" stroke="#AAA" stroke-width="0.8"/>
-    <polygon points="0,-7 -3,3 0,1 3,3" fill="#555"/>
-    <text x="0" y="15" text-anchor="middle" font-size="7" font-family="system-ui" fill="#999">N</text>
+  // Compass rose (small, top right)
+  const nc = `<g transform="translate(${VP_W - 28}, 26)">
+    <circle r="11" fill="none" stroke="#555" stroke-width="0.8"/>
+    <polygon points="0,-8 -2.5,3 0,1 2.5,3" fill="#C4A35A"/>
+    <text y="20" text-anchor="middle" font-size="7" font-family="system-ui" fill="#666">N</text>
   </g>`
 
-  const watermark = `<text x="${VP_W / 2}" y="${VP_H - 4}" text-anchor="middle"
-    font-size="6.5" font-family="system-ui" fill="#CCC" letter-spacing="1.5">BARNHAUS STEEL BUILDERS</text>`
+  // Sqft label
+  const bedsInfo = state.bedrooms || ''
+  const bathsInfo = state.bathrooms || ''
+  const info = state.sqft
+    ? `${state.sqft.toLocaleString()} SF${bedsInfo ? ' · ' + bedsInfo + ' bed' : ''}${bathsInfo ? ' · ' + bathsInfo + ' bath' : ''}`
+    : ''
+  const infoLabel = info ? `<text x="${VP_W/2}" y="${VP_H - 10}" text-anchor="middle"
+    font-size="8" font-family="system-ui" fill="#666" letter-spacing="1">${info}</text>` : ''
+
+  const watermark = `<text x="12" y="${VP_H - 10}"
+    font-size="6" font-family="system-ui" fill="#333" letter-spacing="1">BARNHAUS STEEL BUILDERS</text>`
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ${VP_W} ${VP_H}">
-  <rect width="${VP_W}" height="${VP_H}" fill="#FAFAF8"/>
-  ${outlinePath}
-  ${roomsSVG}
-  ${dimW}
-  ${dimD}
-  ${northArrow}
+  <rect width="${VP_W}" height="${VP_H}" fill="#111" rx="8"/>
+  ${lines}
+  ${bubbles}
+  ${nc}
+  ${infoLabel}
   ${watermark}
 </svg>`
-}
-
-function shapeOutline(shape: string, ox: number, oy: number, W: number, H: number): string {
-  let d: string
-  switch (shape) {
-    case 'l-shape':
-      d = `M${ox},${oy} L${ox+W},${oy} L${ox+W},${oy+H*0.52} L${ox+W*0.58},${oy+H*0.52} L${ox+W*0.58},${oy+H} L${ox},${oy+H} Z`
-      break
-    case 't-shape':
-      d = `M${ox+W*0.18},${oy} L${ox+W*0.82},${oy} L${ox+W*0.82},${oy+H*0.5} L${ox+W},${oy+H*0.5} L${ox+W},${oy+H} L${ox},${oy+H} L${ox},${oy+H*0.5} L${ox+W*0.18},${oy+H*0.5} Z`
-      break
-    case 'u-shape':
-      d = `M${ox},${oy} L${ox+W},${oy} L${ox+W},${oy+H} L${ox+W*0.72},${oy+H} L${ox+W*0.72},${oy+H*0.48} L${ox+W*0.28},${oy+H*0.48} L${ox+W*0.28},${oy+H} L${ox},${oy+H} Z`
-      break
-    case 'courtyard':
-      d = `M${ox},${oy} L${ox+W},${oy} L${ox+W},${oy+H} L${ox},${oy+H} Z M${ox+W*0.22},${oy+H*0.28} L${ox+W*0.78},${oy+H*0.28} L${ox+W*0.78},${oy+H*0.72} L${ox+W*0.22},${oy+H*0.72} Z`
-      break
-    default:
-      d = `M${ox},${oy} L${ox+W},${oy} L${ox+W},${oy+H} L${ox},${oy+H} Z`
-  }
-  const fr = shape === 'courtyard' ? 'evenodd' : 'nonzero'
-  return `<path d="${d}" fill="${shape === 'courtyard' ? '#F4F4F0' : 'none'}" stroke="#222" stroke-width="2" fill-rule="${fr}"/>`
 }
