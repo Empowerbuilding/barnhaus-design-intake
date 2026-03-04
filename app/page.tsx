@@ -15,7 +15,8 @@ const TOTAL_STEPS = 8
 
 const STEP_LABELS = ['Style', 'Size', 'Shape', 'Orientation', 'Priorities', 'Garage', 'Features', 'Contact']
 
-const initialState: DesignState = { step: 1 }
+const DEFAULT_PRIORITIES = ['master_privacy', 'open_living', 'outdoor_connection', 'garage_access', 'home_office'] as const
+const initialState: DesignState = { step: 1, priorities: [...DEFAULT_PRIORITIES] as import('@/lib/design-types').Priority[] }
 
 export default function DesignFlow() {
   const [state, setState] = useState<DesignState>(initialState)
@@ -76,7 +77,7 @@ export default function DesignFlow() {
       case 1: return !!state.style
       case 2: return !!state.sqft && !!state.bedrooms && !!state.bathrooms
       case 3: return !!state.shape
-      case 4: return !!state.streetFacing
+      case 4: return true // orientation is optional
       case 5: return !!(state.priorities && state.priorities.length === 5)
       case 6: return !!state.garageCount
       case 7: return true
