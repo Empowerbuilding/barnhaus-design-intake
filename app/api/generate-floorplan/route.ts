@@ -23,35 +23,33 @@ Convert this into a clean, squared-up schematic floor plan SVG.
 Rules:
 - Output ONLY the SVG element — no markdown, no explanation, no code fences
 - SVG viewBox="0 0 500 360", dark background rect fill="#111"
-- Exterior walls: stroke="#CCC" stroke-width="2.5", room fills warm off-whites
+- Exterior walls: stroke="#CCC" stroke-width="2.5", room fills warm off-whites (#F5F0E8 etc)
 - Interior walls: stroke="#888" stroke-width="1.2"
-- Label each room (font-size 9px, bold, dark fill)
+- Label each room (font-size 9px, bold, fill="#222")
 - Add small door arc symbols at entries
-- Respect the relative positions from bubbles — rooms near each other in bubbles should be adjacent in the plan
+- Respect the relative positions from bubbles — rooms near each other should be adjacent
 - Add a hallway corridor connecting bedrooms
 - Include north arrow (top-right) and "BARNHAUS STEEL BUILDERS" watermark (bottom center, font-size 6px, fill="#444")
 - Make it look like a clean architectural schematic`
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'No API key' }, { status: 500 })
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-opus-4-5',
+      model: 'gpt-4o',
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     }),
   })
 
   const data = await res.json()
-  const text: string = data?.content?.[0]?.text || ''
-  // Extract SVG
+  const text: string = data?.choices?.[0]?.message?.content || ''
   const match = text.match(/<svg[\s\S]*<\/svg>/)
   const svg = match ? match[0] : text
 
