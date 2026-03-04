@@ -125,23 +125,27 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedSVG, 
   }
 
   const onMove = useCallback((clientX: number, clientY: number) => {
-    if (!dragRef.current || !svgRef.current) return
+    const drag = dragRef.current
+    if (!drag || !svgRef.current) return
     const rect = svgRef.current.getBoundingClientRect()
     const scaleX = VP_W / rect.width
     const scaleY = VP_H / rect.height
-    const x = Math.max(20, Math.min(VP_W - 20, (clientX - rect.left) * scaleX - dragRef.current.ox))
-    const y = Math.max(20, Math.min(VP_H - 20, (clientY - rect.top)  * scaleY - dragRef.current.oy))
-    setBubbles(prev => prev.map(b => b.id === dragRef.current!.id ? { ...b, x, y } : b))
+    const x = Math.max(20, Math.min(VP_W - 20, (clientX - rect.left) * scaleX - drag.ox))
+    const y = Math.max(20, Math.min(VP_H - 20, (clientY - rect.top)  * scaleY - drag.oy))
+    setBubbles(prev => prev.map(b => b.id === drag.id ? { ...b, x, y } : b))
   }, [])
+
+  const onPositionsChangeRef = useRef(onPositionsChange)
+  useEffect(() => { onPositionsChangeRef.current = onPositionsChange }, [onPositionsChange])
 
   const onEnd = useCallback(() => {
     if (!dragRef.current) return
     dragRef.current = null
     setBubbles(prev => {
-      onPositionsChange(Object.fromEntries(prev.map(b => [b.id, { x: b.x, y: b.y }])))
+      onPositionsChangeRef.current(Object.fromEntries(prev.map(b => [b.id, { x: b.x, y: b.y }])))
       return prev
     })
-  }, [onPositionsChange])
+  }, [])
 
   useEffect(() => {
     const mm = (e: MouseEvent) => onMove(e.clientX, e.clientY)
