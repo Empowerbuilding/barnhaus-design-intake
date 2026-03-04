@@ -14,7 +14,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Pre-Design Form | Barnhaus Steel Builders",
+  title: "Design Brief | Barnhaus Steel Builders",
   description: "Help us understand your construction needs",
   icons: {
     icon: "https://hbfjdfxephlczkfgpceg.supabase.co/storage/v1/object/public/website/logos/logo1.png",
