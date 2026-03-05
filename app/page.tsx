@@ -188,7 +188,7 @@ export default function DesignFlow() {
           />
 
           {/* Mobile floating buttons */}
-          <div className="lg:hidden fixed bottom-6 left-0 right-0 flex justify-between px-4 pointer-events-none z-40">
+          <div className="lg:hidden fixed bottom-6 left-0 right-0 flex justify-between px-4 pointer-events-none z-[60]">
             <button onClick={() => setSheetOpen(true)}
               className="pointer-events-auto bg-[#C4A35A] text-black font-bold px-5 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2">
               ⚙ Design Options
