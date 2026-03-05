@@ -24,7 +24,7 @@ export default function DesignFlow() {
   const [submitted, setSubmitted] = useState(false)
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(true)
 
   // Regenerate SVG whenever state changes
   useEffect(() => {
@@ -230,7 +230,7 @@ export default function DesignFlow() {
                   <button onClick={() => { back(); setSheetOpen(false) }}
                     className="px-5 py-3 border border-white/20 text-white rounded-lg hover:bg-white/10 transition text-sm">← Back</button>
                 )}
-                <button onClick={() => { if (canNext()) { next(); if (state.step < 7) setSheetOpen(false) } }}
+                <button onClick={() => { if (canNext()) { next() } }}
                   disabled={!canNext() || saving}
                   className="flex-1 py-3 bg-[#C4A35A] text-black font-semibold rounded-lg disabled:opacity-40 transition text-sm">
                   {saving ? 'Saving...' : state.step === 7 ? 'Almost done →' : 'Next →'}
