@@ -84,7 +84,10 @@ export default function DesignFlow() {
         body: JSON.stringify({ imageBase64, state, bubbles }),
       })
       const data = await res.json()
-      // handled above
+      if (data.imageUrl) {
+        setZoneMapHistory(prev => { const next = [...prev, data.imageUrl]; setSelectedMapIndex(next.length - 1); return next; })
+        setActiveView('zonemap')
+      }
     } catch (e) { console.error(e) }
     setGenerating(false)
   }
