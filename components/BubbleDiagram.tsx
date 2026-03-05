@@ -202,8 +202,10 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedImage
     img.src = url
   }
 
-  // Must be before any early return — rules of hooks
-  useEffect(() => { if (triggerRef) { triggerRef.current = handleGenerate } }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Keep triggerRef always pointing to latest handleGenerate
+  const handleGenerateRef = useRef(handleGenerate)
+  handleGenerateRef.current = handleGenerate
+  useEffect(() => { if (triggerRef) { triggerRef.current = () => handleGenerateRef.current() } }, [triggerRef]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (generatedImageUrl) {
     return (
