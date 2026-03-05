@@ -93,7 +93,8 @@ export default function DesignFlow() {
       case 2: return !!state.sqft && !!state.bedrooms && !!state.bathrooms
       case 3: return !!state.shape
       case 4: return !!(state.priorities && state.priorities.length === 5)
-      case 6: return !!state.garageCount
+      case 5: return !!state.garageCount
+      case 6: return true
       case 7: return true
       default: return false
     }
