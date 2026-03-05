@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { DesignState } from '@/lib/design-types'
 import BubbleDiagram from '@/components/BubbleDiagram'
 import StepStyle from '@/components/design-flow/StepStyle'
@@ -24,6 +24,7 @@ export default function DesignFlow() {
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(true)
+  const generateRef = useRef<(() => void) | null>(null)
 
   // Regenerate SVG whenever state changes
   useEffect(() => {
@@ -182,6 +183,7 @@ export default function DesignFlow() {
             generatedImageUrl={generatedImageUrl || undefined}
             onGenerate={handleGenerate}
             generating={generating}
+            triggerRef={generateRef}
           />
 
           {/* Mobile floating buttons */}
@@ -191,10 +193,7 @@ export default function DesignFlow() {
               ⚙ Design Options
               <span className="bg-black/20 text-black text-xs px-1.5 py-0.5 rounded-full">{state.step}/{TOTAL_STEPS}</span>
             </button>
-            <button onClick={() => {
-              const bd = document.querySelector('[data-generate]') as HTMLButtonElement
-              bd?.click()
-            }}
+            <button onClick={() => generateRef.current?.()}
               className="pointer-events-auto bg-[#1A1A1A] border border-[#C4A35A] text-[#C4A35A] font-bold px-4 py-3 rounded-full shadow-2xl text-sm">
               ✦ Zone Map
             </button>

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { DesignState } from '@/lib/design-types'
 
 const VP_W = 500
@@ -79,13 +79,15 @@ interface Props {
   generatedImageUrl?: string
   onGenerate: (base64: string, bubbles: {id:string;label:string;x:number;y:number;r:number}[]) => void
   generating: boolean
+  triggerRef?: React.MutableRefObject<(() => void) | null>
 }
 
-export default function BubbleDiagram({ state, onPositionsChange, generatedImageUrl, onGenerate, generating }: Props) {
+export default function BubbleDiagram({ state, onPositionsChange, generatedImageUrl, onGenerate, generating, triggerRef }: Props) {
   const [bubbles, setBubbles] = useState<Bubble[]>(() => buildBubbles(state))
   const dragRef = useRef<{ id: string; ox: number; oy: number } | null>(null)
   const lastCaptureRef = useRef<{ base64: string; bubbles: {id:string;label:string;x:number;y:number;r:number}[] } | null>(null)
   const svgRef  = useRef<SVGSVGElement>(null)
+  // Expose handleGenerate via triggerRef for external callers (mobile button)
   const prevBeds    = useRef(state.bedrooms)
   const prevBaths   = useRef(state.bathrooms)
   const prevGarage  = useRef(state.garageCount)
@@ -199,6 +201,9 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedImage
     }
     img.src = url
   }
+
+  // Must be before any early return — rules of hooks
+  useEffect(() => { if (triggerRef) { triggerRef.current = handleGenerate } }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (generatedImageUrl) {
     return (
