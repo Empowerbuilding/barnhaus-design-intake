@@ -29,15 +29,10 @@ export async function POST(req: NextRequest) {
 
   const prompt = `Transform this room bubble diagram into a clean 2D architectural zone map for a ${sqft} SF ${style} home (${beds} bed / ${baths} bath). Keep the exact relative positions of each labeled bubble. Convert each bubble into a clean rectangular zone with straight walls. Connect adjacent zones edge-to-edge. Add narrow hallway corridors linking the bedroom zones to the main living area. Label each zone in bold. Style: top-down 2D floor plan, dark background, warm light-toned fills, white wall lines, no furniture no detail — only zones walls hallways and labels.`
 
-  const webhookRes = await fetch('https://n8n.empowerbuilding.ai/webhook/concept-card', {
+  const webhookRes = await fetch('https://n8n.empowerbuilding.ai/webhook/zone-map-generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      imageUrl: publicUrl,
-      prompt,
-      approvedFloorPlanUrl: publicUrl,
-      projectName: `Design-${Date.now()}`,
-    }),
+    body: JSON.stringify({ imageUrl: publicUrl, prompt }),
   })
 
   if (!webhookRes.ok) {
@@ -46,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await webhookRes.json()
-  const imageUrl = result.conceptCard || result.enhancedFloorPlanUrl
+  const imageUrl = result.imageUrl
 
   return NextResponse.json({ imageUrl })
 }
