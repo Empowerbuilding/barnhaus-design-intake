@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const sqft  = state.sqft || 2500
   const style = state.style || 'Hill Country'
 
-  const prompt = `This is a room bubble diagram for a ${sqft} SF ${style} style home with ${beds} bedrooms and ${baths} bathrooms. Convert this bubble arrangement into a clean architectural zone map. Keep the same relative positions of each zone. Draw zones as labeled rectangular areas with clean walls. Add hallway corridors connecting the bedroom zones to the living areas. Label each zone clearly. Use an architectural diagram style — dark background, white or light gray walls, zone labels in clean sans-serif font. Do not add furniture or detail. Just zones, walls, hallways, and labels.`
+  const prompt = `Transform this room bubble diagram into a clean 2D architectural zone map for a ${sqft} SF ${style} home (${beds} bed / ${baths} bath). Keep the exact relative positions of each labeled bubble. Convert each bubble into a clean rectangular zone with straight walls. Connect adjacent zones edge-to-edge. Add narrow hallway corridors linking the bedroom zones to the main living area. Label each zone in bold. Style: top-down 2D floor plan, dark background, warm light-toned fills, white wall lines, no furniture no detail — only zones walls hallways and labels.`
 
   const webhookRes = await fetch('https://n8n.empowerbuilding.ai/webhook/concept-card', {
     method: 'POST',
