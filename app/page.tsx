@@ -155,7 +155,7 @@ export default function DesignFlow() {
         <div className="hidden lg:flex flex-1 lg:max-w-[55%] px-6 py-8 flex-col">
           <div className="flex-1">
             {state.step === 1 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
-            {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} bathrooms={state.bathrooms} onChange={patch => update(patch)} />}
+            {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} bathrooms={state.bathrooms} stories={state.stories} onChange={patch => update(patch)} />}
             {state.step === 3 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
             {state.step === 4 && <StepOrientation streetFacing={state.streetFacing} viewFacing={state.viewFacing} onChange={patch => update(patch)} />}
             {state.step === 5 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
@@ -216,7 +216,7 @@ export default function DesignFlow() {
             </div>
             <div className="px-5 py-6">
               {state.step === 1 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
-              {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} bathrooms={state.bathrooms} onChange={patch => update(patch)} />}
+              {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} bathrooms={state.bathrooms} stories={state.stories} onChange={patch => update(patch)} />}
               {state.step === 3 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
               {state.step === 4 && <StepOrientation streetFacing={state.streetFacing} viewFacing={state.viewFacing} onChange={patch => update(patch)} />}
               {state.step === 5 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
