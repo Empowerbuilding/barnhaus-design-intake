@@ -5,15 +5,14 @@ import BubbleDiagram from '@/components/BubbleDiagram'
 import StepStyle from '@/components/design-flow/StepStyle'
 import StepSize from '@/components/design-flow/StepSize'
 import StepShape from '@/components/design-flow/StepShape'
-import StepOrientation from '@/components/design-flow/StepOrientation'
 import StepPriorities from '@/components/design-flow/StepPriorities'
 import StepGarage from '@/components/design-flow/StepGarage'
 import StepFeatures from '@/components/design-flow/StepFeatures'
 import StepContact from '@/components/design-flow/StepContact'
 
-const TOTAL_STEPS = 8
+const TOTAL_STEPS = 7
 
-const STEP_LABELS = ['Style', 'Size', 'Shape', 'Orientation', 'Priorities', 'Garage', 'Features', 'Contact']
+const STEP_LABELS = ['Style', 'Size', 'Shape', 'Priorities', 'Garage', 'Features', 'Contact']
 
 const DEFAULT_PRIORITIES = ['master_privacy', 'open_living', 'outdoor_connection', 'garage_access', 'home_office'] as const
 const initialState: DesignState = { step: 1, priorities: [...DEFAULT_PRIORITIES] as import('@/lib/design-types').Priority[] }
@@ -92,8 +91,7 @@ export default function DesignFlow() {
       case 1: return !!state.style
       case 2: return !!state.sqft && !!state.bedrooms && !!state.bathrooms
       case 3: return !!state.shape
-      case 4: return true // orientation is optional
-      case 5: return !!(state.priorities && state.priorities.length === 5)
+      case 4: return !!(state.priorities && state.priorities.length === 5)
       case 6: return !!state.garageCount
       case 7: return true
       default: return false
@@ -157,13 +155,12 @@ export default function DesignFlow() {
             {state.step === 1 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
             {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} bathrooms={state.bathrooms} stories={state.stories} onChange={patch => update(patch)} />}
             {state.step === 3 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
-            {state.step === 4 && <StepOrientation streetFacing={state.streetFacing} viewFacing={state.viewFacing} onChange={patch => update(patch)} />}
-            {state.step === 5 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
-            {state.step === 6 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} onChange={patch => update(patch)} />}
-            {state.step === 7 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
-            {state.step === 8 && <StepContact onSubmit={handleSubmit} saving={saving} />}
+            {state.step === 4 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
+            {state.step === 5 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} onChange={patch => update(patch)} />}
+            {state.step === 6 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
+            {state.step === 7 && <StepContact onSubmit={handleSubmit} saving={saving} />}
           </div>
-          {state.step < 8 && (
+          {state.step < 7 && (
             <div className="flex gap-3 mt-8">
               {state.step > 1 && (
                 <button onClick={back} className="px-6 py-3 border border-white/20 text-white rounded hover:bg-white/10 transition text-sm">← Back</button>
@@ -218,13 +215,12 @@ export default function DesignFlow() {
               {state.step === 1 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
               {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} bathrooms={state.bathrooms} stories={state.stories} onChange={patch => update(patch)} />}
               {state.step === 3 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
-              {state.step === 4 && <StepOrientation streetFacing={state.streetFacing} viewFacing={state.viewFacing} onChange={patch => update(patch)} />}
-              {state.step === 5 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
-              {state.step === 6 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} onChange={patch => update(patch)} />}
-              {state.step === 7 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
-              {state.step === 8 && <StepContact onSubmit={handleSubmit} saving={saving} />}
+              {state.step === 4 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
+              {state.step === 5 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} onChange={patch => update(patch)} />}
+              {state.step === 6 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
+              {state.step === 7 && <StepContact onSubmit={handleSubmit} saving={saving} />}
             </div>
-            {state.step < 8 && (
+            {state.step < 7 && (
               <div className="sticky bottom-0 bg-[#1A1A1A] border-t border-white/10 px-5 py-4 flex gap-3">
                 {state.step > 1 && (
                   <button onClick={() => { back(); setSheetOpen(false) }}
@@ -233,7 +229,7 @@ export default function DesignFlow() {
                 <button onClick={() => { if (canNext()) { next() } }}
                   disabled={!canNext() || saving}
                   className="flex-1 py-3 bg-[#C4A35A] text-black font-semibold rounded-lg disabled:opacity-40 transition text-sm">
-                  {saving ? 'Saving...' : state.step === 7 ? 'Almost done →' : 'Next →'}
+                  {saving ? 'Saving...' : state.step === 6 ? 'Almost done →' : 'Next →'}
                 </button>
               </div>
             )}
