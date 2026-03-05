@@ -199,7 +199,7 @@ export default function DesignFlow() {
               bd?.click()
             }}
               className="pointer-events-auto bg-[#1A1A1A] border border-[#C4A35A] text-[#C4A35A] font-bold px-4 py-3 rounded-full shadow-2xl text-sm">
-              ✦ Generate
+              ✦ Zone Map
             </button>
           </div>
         </div>
