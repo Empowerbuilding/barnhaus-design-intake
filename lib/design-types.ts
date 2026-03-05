@@ -1,5 +1,5 @@
 export type Style = 'hill_country' | 'modern_farmhouse' | 'industrial' | 'contemporary'
-export type Shape = 'rectangle' | 'l-shape' | 't-shape' | 'u-shape' | 'courtyard'
+export type Shape = 'rectangle' | 'l-shape' | 't-shape' | 'u-shape' | 'courtyard' | 'h-shape' | 'z-shape' | 'wide-shallow' | 'narrow-deep'
 export type Direction = 'N' | 'S' | 'E' | 'W'
 export type GarageCount = 'none' | '1-car' | '2-car' | '3-car'
 export type GarageAttachment = 'attached_left' | 'attached_right' | 'detached'

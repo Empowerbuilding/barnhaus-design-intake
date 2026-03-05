@@ -89,6 +89,7 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedImage
   const prevBeds    = useRef(state.bedrooms)
   const prevBaths   = useRef(state.bathrooms)
   const prevGarage  = useRef(state.garageCount)
+  const prevStories = useRef(state.stories)
   const prevFeats   = useRef(JSON.stringify(state.features))
 
   // Merge new rooms in while preserving existing positions
@@ -96,10 +97,11 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedImage
   useEffect(() => {
     const featsStr = JSON.stringify(state.features)
     if (state.bedrooms !== prevBeds.current || state.bathrooms !== prevBaths.current ||
-        state.garageCount !== prevGarage.current || featsStr !== prevFeats.current) {
+        state.garageCount !== prevGarage.current || featsStr !== prevFeats.current || state.stories !== prevStories.current) {
       prevBeds.current = state.bedrooms
       prevBaths.current = state.bathrooms
       prevGarage.current = state.garageCount
+      prevStories.current = state.stories
       prevFeats.current = featsStr
       const newTemplate = buildBubbles(state)
       setBubbles(prev => {
@@ -114,7 +116,7 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedImage
       })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.bedrooms, state.bathrooms, state.garageCount, state.features])
+  }, [state.bedrooms, state.bathrooms, state.garageCount, state.features, state.stories])
 
   const getSVGPoint = useCallback((e: { clientX: number; clientY: number }) => {
     const svg = svgRef.current
@@ -262,7 +264,7 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedImage
           fontSize="6" fontFamily="system-ui" fill="#333" letterSpacing="1.5">BARNHAUS STEEL BUILDERS</text>
       </svg>
 
-      <button onClick={handleGenerate} disabled={generating}
+      <button data-generate onClick={handleGenerate} disabled={generating}
         className="mt-3 w-full py-3 bg-[#C4A35A] text-black font-semibold rounded-lg hover:bg-[#D4B36A] disabled:opacity-50 disabled:cursor-wait transition-colors text-sm">
         {generating ? 'Generating Zone Map...' : 'Generate Zone Map →'}
       </button>

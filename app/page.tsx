@@ -24,6 +24,7 @@ export default function DesignFlow() {
   const [submitted, setSubmitted] = useState(false)
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   // Regenerate SVG whenever state changes
   useEffect(() => {
@@ -149,8 +150,9 @@ export default function DesignFlow() {
 
       {/* Main Content */}
       <div className="flex flex-col lg:flex-row min-h-[calc(100vh-120px)]">
-        {/* Left: Questions */}
-        <div className="flex-1 lg:max-w-[55%] px-6 py-8 flex flex-col">
+
+        {/* Left: Questions — hidden on mobile, always visible on desktop */}
+        <div className="hidden lg:flex flex-1 lg:max-w-[55%] px-6 py-8 flex-col">
           <div className="flex-1">
             {state.step === 1 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
             {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} bathrooms={state.bathrooms} onChange={patch => update(patch)} />}
@@ -161,33 +163,22 @@ export default function DesignFlow() {
             {state.step === 7 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
             {state.step === 8 && <StepContact onSubmit={handleSubmit} saving={saving} />}
           </div>
-
-          {/* Nav Buttons */}
           {state.step < 8 && (
             <div className="flex gap-3 mt-8">
               {state.step > 1 && (
-                <button
-                  onClick={back}
-                  className="px-6 py-3 border border-white/20 text-white rounded hover:bg-white/10 transition text-sm"
-                >
-                  ← Back
-                </button>
+                <button onClick={back} className="px-6 py-3 border border-white/20 text-white rounded hover:bg-white/10 transition text-sm">← Back</button>
               )}
-              <button
-                onClick={next}
-                disabled={!canNext() || saving}
-                className="flex-1 px-6 py-3 bg-[#C4A35A] text-black font-semibold rounded
-                  hover:bg-[#D4B36A] disabled:opacity-40 disabled:cursor-not-allowed transition text-sm"
-              >
+              <button onClick={next} disabled={!canNext() || saving}
+                className="flex-1 px-6 py-3 bg-[#C4A35A] text-black font-semibold rounded hover:bg-[#D4B36A] disabled:opacity-40 disabled:cursor-not-allowed transition text-sm">
                 {saving ? 'Saving...' : 'Next →'}
               </button>
             </div>
           )}
         </div>
 
-        {/* Right: Bubble Diagram */}
-        <div className="lg:w-[45%] bg-[#0D0D0D] lg:sticky lg:top-0 lg:h-screen flex flex-col p-6 border-l border-white/10">
-          <p className="text-xs text-gray-600 uppercase tracking-widest mb-4 text-center">Arrange Your Rooms</p>
+        {/* Bubble Diagram — full screen on mobile, right panel on desktop */}
+        <div className="relative flex-1 lg:w-[45%] bg-[#0D0D0D] lg:sticky lg:top-0 lg:h-screen flex flex-col lg:p-6 lg:border-l lg:border-white/10">
+          <p className="hidden lg:block text-xs text-gray-600 uppercase tracking-widest mb-4 text-center">Arrange Your Rooms</p>
           <BubbleDiagram
             state={state}
             onPositionsChange={() => {}}
@@ -195,8 +186,60 @@ export default function DesignFlow() {
             onGenerate={handleGenerate}
             generating={generating}
           />
+
+          {/* Mobile floating buttons */}
+          <div className="lg:hidden fixed bottom-6 left-0 right-0 flex justify-between px-4 pointer-events-none z-40">
+            <button onClick={() => setSheetOpen(true)}
+              className="pointer-events-auto bg-[#C4A35A] text-black font-bold px-5 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2">
+              ⚙ Design Options
+              <span className="bg-black/20 text-black text-xs px-1.5 py-0.5 rounded-full">{state.step}/{TOTAL_STEPS}</span>
+            </button>
+            <button onClick={() => {
+              const bd = document.querySelector('[data-generate]') as HTMLButtonElement
+              bd?.click()
+            }}
+              className="pointer-events-auto bg-[#1A1A1A] border border-[#C4A35A] text-[#C4A35A] font-bold px-4 py-3 rounded-full shadow-2xl text-sm">
+              ✦ Generate
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Mobile Bottom Sheet */}
+      {sheetOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setSheetOpen(false)} />
+          <div className="relative bg-[#1A1A1A] rounded-t-2xl max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-[#1A1A1A] border-b border-white/10 px-5 py-4 flex items-center justify-between">
+              <span className="text-sm font-semibold text-[#C4A35A] uppercase tracking-widest">{STEP_LABELS[state.step - 1]}</span>
+              <button onClick={() => setSheetOpen(false)} className="text-gray-400 text-xl leading-none">✕</button>
+            </div>
+            <div className="px-5 py-6">
+              {state.step === 1 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
+              {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} bathrooms={state.bathrooms} onChange={patch => update(patch)} />}
+              {state.step === 3 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
+              {state.step === 4 && <StepOrientation streetFacing={state.streetFacing} viewFacing={state.viewFacing} onChange={patch => update(patch)} />}
+              {state.step === 5 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
+              {state.step === 6 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} onChange={patch => update(patch)} />}
+              {state.step === 7 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
+              {state.step === 8 && <StepContact onSubmit={handleSubmit} saving={saving} />}
+            </div>
+            {state.step < 8 && (
+              <div className="sticky bottom-0 bg-[#1A1A1A] border-t border-white/10 px-5 py-4 flex gap-3">
+                {state.step > 1 && (
+                  <button onClick={() => { back(); setSheetOpen(false) }}
+                    className="px-5 py-3 border border-white/20 text-white rounded-lg hover:bg-white/10 transition text-sm">← Back</button>
+                )}
+                <button onClick={() => { if (canNext()) { next(); if (state.step < 7) setSheetOpen(false) } }}
+                  disabled={!canNext() || saving}
+                  className="flex-1 py-3 bg-[#C4A35A] text-black font-semibold rounded-lg disabled:opacity-40 transition text-sm">
+                  {saving ? 'Saving...' : state.step === 7 ? 'Almost done →' : 'Next →'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
