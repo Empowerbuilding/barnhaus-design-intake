@@ -79,15 +79,14 @@ interface Props {
   generatedImageUrl?: string
   onGenerate: (base64: string, bubbles: {id:string;label:string;x:number;y:number;r:number}[]) => void
   generating: boolean
-  triggerRef?: React.MutableRefObject<(() => void) | null>
+  generateTrigger?: number
 }
 
-export default function BubbleDiagram({ state, onPositionsChange, generatedImageUrl, onGenerate, generating, triggerRef }: Props) {
+export default function BubbleDiagram({ state, onPositionsChange, generatedImageUrl, onGenerate, generating, generateTrigger }: Props) {
   const [bubbles, setBubbles] = useState<Bubble[]>(() => buildBubbles(state))
   const dragRef = useRef<{ id: string; ox: number; oy: number } | null>(null)
   const lastCaptureRef = useRef<{ base64: string; bubbles: {id:string;label:string;x:number;y:number;r:number}[] } | null>(null)
   const svgRef  = useRef<SVGSVGElement>(null)
-  // Expose handleGenerate via triggerRef for external callers (mobile button)
   const prevBeds    = useRef(state.bedrooms)
   const prevBaths   = useRef(state.bathrooms)
   const prevGarage  = useRef(state.garageCount)
@@ -202,10 +201,8 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedImage
     img.src = url
   }
 
-  // Keep triggerRef always pointing to latest handleGenerate
-  const handleGenerateRef = useRef(handleGenerate)
-  handleGenerateRef.current = handleGenerate
-  useEffect(() => { if (triggerRef) { triggerRef.current = () => handleGenerateRef.current() } }, [triggerRef]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Fire when parent increments generateTrigger
+  useEffect(() => { if (generateTrigger && generateTrigger > 0) handleGenerate() }, [generateTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (generatedImageUrl) {
     return (
