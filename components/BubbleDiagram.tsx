@@ -84,6 +84,7 @@ interface Props {
 export default function BubbleDiagram({ state, onPositionsChange, generatedImageUrl, onGenerate, generating }: Props) {
   const [bubbles, setBubbles] = useState<Bubble[]>(() => buildBubbles(state))
   const dragRef = useRef<{ id: string; ox: number; oy: number } | null>(null)
+  const lastCaptureRef = useRef<{ base64: string; bubbles: {id:string;label:string;x:number;y:number;r:number}[] } | null>(null)
   const svgRef  = useRef<SVGSVGElement>(null)
   const prevBeds    = useRef(state.bedrooms)
   const prevBaths   = useRef(state.bathrooms)
@@ -190,8 +191,9 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedImage
       ctx.drawImage(img, 0, 0)
       URL.revokeObjectURL(url)
       const base64 = canvas.toDataURL('image/png')
-      // Pass exact bubble positions alongside image
-      onGenerate(base64, bubbles.map(b => ({ id: b.id, label: b.label, x: b.x, y: b.y, r: b.r })))
+      const bubbleData = bubbles.map(b => ({ id: b.id, label: b.label, x: b.x, y: b.y, r: b.r }))
+      lastCaptureRef.current = { base64, bubbles: bubbleData }
+      onGenerate(base64, bubbleData)
     }
     img.src = url
   }
@@ -201,7 +203,11 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedImage
       <div className="w-full">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={generatedImageUrl} alt="Generated floor plan zone map" className="w-full rounded-lg"/>
-        <button onClick={handleGenerate} className="mt-3 w-full py-2 text-sm text-gray-400 border border-gray-700 rounded-lg hover:border-[#C4A35A] hover:text-[#C4A35A] transition-colors">
+        <button onClick={() => {
+          if (lastCaptureRef.current) {
+            onGenerate(lastCaptureRef.current.base64, lastCaptureRef.current.bubbles)
+          }
+        }} className="mt-3 w-full py-2 text-sm text-gray-400 border border-gray-700 rounded-lg hover:border-[#C4A35A] hover:text-[#C4A35A] transition-colors">
           ↺ Regenerate Zone Map
         </button>
       </div>
