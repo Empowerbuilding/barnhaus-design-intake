@@ -72,13 +72,13 @@ export default function DesignFlow() {
     setSaving(false)
   }
 
-  const handleGenerate = async (imageBase64: string) => {
+  const handleGenerate = async (imageBase64: string, bubbles: {id:string;label:string;x:number;y:number;r:number}[]) => {
     setGenerating(true)
     try {
       const res = await fetch('/api/generate-floorplan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64, state }),
+        body: JSON.stringify({ imageBase64, state, bubbles }),
       })
       const data = await res.json()
       if (data.imageUrl) setGeneratedImageUrl(data.imageUrl)

@@ -77,7 +77,7 @@ interface Props {
   state: DesignState
   onPositionsChange: (p: Record<string, { x: number; y: number }>) => void
   generatedImageUrl?: string
-  onGenerate: (base64: string) => void
+  onGenerate: (base64: string, bubbles: {id:string;label:string;x:number;y:number;r:number}[]) => void
   generating: boolean
 }
 
@@ -190,7 +190,8 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedImage
       ctx.drawImage(img, 0, 0)
       URL.revokeObjectURL(url)
       const base64 = canvas.toDataURL('image/png')
-      onGenerate(base64)
+      // Pass exact bubble positions alongside image
+      onGenerate(base64, bubbles.map(b => ({ id: b.id, label: b.label, x: b.x, y: b.y, r: b.r })))
     }
     img.src = url
   }

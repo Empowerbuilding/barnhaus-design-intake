@@ -7,7 +7,7 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
-  const { imageBase64, state } = await req.json()
+  const { imageBase64, state, bubbles } = await req.json()
 
   // 1. Upload bubble diagram PNG to Supabase storage
   const filename = `floor-plan-bubbles/${Date.now()}.png`
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   const webhookRes = await fetch('https://n8n.empowerbuilding.ai/webhook/zone-map-generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageUrl: publicUrl, prompt }),
+    body: JSON.stringify({ imageUrl: publicUrl, prompt, bubbles: bubbles || [] }),
   })
 
   if (!webhookRes.ok) {
