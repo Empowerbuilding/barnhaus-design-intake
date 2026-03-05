@@ -265,7 +265,7 @@ export default function BubbleDiagram({ state, onPositionsChange, generatedImage
       </svg>
 
       <button data-generate onClick={handleGenerate} disabled={generating}
-        className="mt-3 w-full py-3 bg-[#C4A35A] text-black font-semibold rounded-lg hover:bg-[#D4B36A] disabled:opacity-50 disabled:cursor-wait transition-colors text-sm">
+        className="hidden lg:block mt-3 w-full py-3 bg-[#C4A35A] text-black font-semibold rounded-lg hover:bg-[#D4B36A] disabled:opacity-50 disabled:cursor-wait transition-colors text-sm">
         {generating ? 'Generating Zone Map...' : 'Generate Zone Map →'}
       </button>
     </div>
