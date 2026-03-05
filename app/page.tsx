@@ -188,7 +188,7 @@ export default function DesignFlow() {
           />
 
           {/* Mobile floating buttons */}
-          <div className="lg:hidden fixed bottom-6 left-0 right-0 flex justify-between px-4 pointer-events-none z-[60]">
+          <div className={`lg:hidden fixed bottom-6 left-0 right-0 flex justify-between px-4 pointer-events-none z-[60] transition-opacity ${sheetOpen ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
             <button onClick={() => setSheetOpen(true)}
               className="pointer-events-auto bg-[#C4A35A] text-black font-bold px-5 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2">
               ⚙ Design Options
@@ -225,6 +225,12 @@ export default function DesignFlow() {
                 {state.step > 1 && (
                   <button onClick={() => { back(); setSheetOpen(false) }}
                     className="px-5 py-3 border border-white/20 text-white rounded-lg hover:bg-white/10 transition text-sm">← Back</button>
+                )}
+                {state.step === 6 && (
+                  <button onClick={() => { setGenerateTrigger(t => t + 1); setSheetOpen(false) }}
+                    className="px-4 py-3 border border-[#C4A35A] text-[#C4A35A] rounded-lg text-sm font-semibold">
+                    ✦ Zone Map
+                  </button>
                 )}
                 <button onClick={() => { if (canNext()) { next() } }}
                   disabled={!canNext() || saving}
