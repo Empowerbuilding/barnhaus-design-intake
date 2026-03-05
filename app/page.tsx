@@ -178,14 +178,23 @@ export default function DesignFlow() {
         {/* Bubble Diagram — full screen on mobile, right panel on desktop */}
         <div className="relative flex-1 lg:w-[45%] bg-[#0D0D0D] lg:sticky lg:top-0 lg:h-screen flex flex-col lg:p-6 lg:border-l lg:border-white/10">
           <p className="hidden lg:block text-xs text-gray-600 uppercase tracking-widest mb-4 text-center">Arrange Your Rooms</p>
-          <BubbleDiagram
-            state={state}
-            onPositionsChange={() => {}}
-            generatedImageUrl={generatedImageUrl || undefined}
-            onGenerate={handleGenerate}
-            generating={generating}
-            generateTrigger={generateTrigger}
-          />
+          <div className="relative flex-1">
+            <BubbleDiagram
+              state={state}
+              onPositionsChange={() => {}}
+              generatedImageUrl={generatedImageUrl || undefined}
+              onGenerate={handleGenerate}
+              generating={generating}
+              generateTrigger={generateTrigger}
+            />
+            {generating && (
+              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-lg z-10">
+                <span className="w-10 h-10 border-4 border-[#C4A35A] border-t-transparent rounded-full animate-spin mb-4"/>
+                <p className="text-[#C4A35A] font-semibold text-sm tracking-wide">Generating Zone Map...</p>
+                <p className="text-gray-400 text-xs mt-1">This takes about 20 seconds</p>
+              </div>
+            )}
+          </div>
 
           {/* Mobile floating buttons */}
           <div className={`lg:hidden fixed bottom-6 left-0 right-0 flex justify-between px-4 pointer-events-none z-[60] transition-opacity ${sheetOpen ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
@@ -195,8 +204,9 @@ export default function DesignFlow() {
               <span className="bg-black/20 text-black text-xs px-1.5 py-0.5 rounded-full">{state.step}/{TOTAL_STEPS}</span>
             </button>
             <button onClick={() => setGenerateTrigger(t => t + 1)}
-              className="pointer-events-auto bg-[#1A1A1A] border border-[#C4A35A] text-[#C4A35A] font-bold px-4 py-3 rounded-full shadow-2xl text-sm">
-              ✦ Zone Map
+              disabled={generating}
+              className="pointer-events-auto bg-[#1A1A1A] border border-[#C4A35A] text-[#C4A35A] font-bold px-4 py-3 rounded-full shadow-2xl text-sm disabled:opacity-50 flex items-center gap-2">
+              {generating ? <span className="inline-block w-3 h-3 border-2 border-[#C4A35A] border-t-transparent rounded-full animate-spin"/> : '✦'} {generating ? 'Generating...' : 'Zone Map'}
             </button>
           </div>
         </div>
@@ -228,8 +238,9 @@ export default function DesignFlow() {
                 )}
                 {state.step === 6 && (
                   <button onClick={() => { setGenerateTrigger(t => t + 1); setSheetOpen(false) }}
-                    className="px-4 py-3 border border-[#C4A35A] text-[#C4A35A] rounded-lg text-sm font-semibold">
-                    ✦ Zone Map
+                    disabled={generating}
+                    className="px-4 py-3 border border-[#C4A35A] text-[#C4A35A] rounded-lg text-sm font-semibold disabled:opacity-50 flex items-center gap-2">
+                    {generating ? <span className="inline-block w-3 h-3 border-2 border-[#C4A35A] border-t-transparent rounded-full animate-spin"/> : '✦'} Zone Map
                   </button>
                 )}
                 <button onClick={() => { if (canNext()) { next() } }}
