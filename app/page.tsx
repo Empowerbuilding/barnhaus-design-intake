@@ -21,7 +21,9 @@ export default function DesignFlow() {
   const [state, setState] = useState<DesignState>(initialState)
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
+  const [zoneMapHistory, setZoneMapHistory] = useState<string[]>([])
+  const [activeView, setActiveView] = useState<'bubbles' | 'zonemap'>('bubbles')
+  const [selectedMapIndex, setSelectedMapIndex] = useState<number>(0)
   const [generating, setGenerating] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(true)
   const [generateTrigger, setGenerateTrigger] = useState(0)
@@ -82,7 +84,7 @@ export default function DesignFlow() {
         body: JSON.stringify({ imageBase64, state, bubbles }),
       })
       const data = await res.json()
-      if (data.imageUrl) setGeneratedImageUrl(data.imageUrl)
+      // handled above
     } catch (e) { console.error(e) }
     setGenerating(false)
   }
@@ -177,17 +179,64 @@ export default function DesignFlow() {
 
         {/* Bubble Diagram — full screen on mobile, right panel on desktop */}
         <div className="relative flex-1 lg:w-[45%] bg-[#0D0D0D] lg:sticky lg:top-0 lg:h-screen flex flex-col lg:p-6 lg:border-l lg:border-white/10">
-          <p className="hidden lg:block text-xs text-gray-600 uppercase tracking-widest mb-4 text-center">Arrange Your Rooms</p>
+          {/* Toggle + History */}
+          {zoneMapHistory.length > 0 && (
+            <div className="hidden lg:flex items-center justify-between mb-3 px-1">
+              <div className="flex bg-white/5 rounded-lg p-0.5 gap-0.5">
+                <button onClick={() => setActiveView('bubbles')}
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition ${activeView === 'bubbles' ? 'bg-[#C4A35A] text-black' : 'text-gray-400 hover:text-white'}`}>
+                  ○ Bubbles
+                </button>
+                <button onClick={() => setActiveView('zonemap')}
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition ${activeView === 'zonemap' ? 'bg-[#C4A35A] text-black' : 'text-gray-400 hover:text-white'}`}>
+                  ⊞ Zone Map
+                </button>
+              </div>
+              {zoneMapHistory.length > 1 && (
+                <div className="flex items-center gap-1">
+                  {zoneMapHistory.map((_, i) => (
+                    <button key={i} onClick={() => { setSelectedMapIndex(i); setActiveView('zonemap') }}
+                      className={`w-2 h-2 rounded-full transition ${i === selectedMapIndex ? 'bg-[#C4A35A]' : 'bg-white/30 hover:bg-white/60'}`}
+                      title={`Zone Map ${i + 1}`}/>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {!zoneMapHistory.length && <p className="hidden lg:block text-xs text-gray-600 uppercase tracking-widest mb-4 text-center">Arrange Your Rooms</p>}
           <div className="relative flex-1">
             <BubbleDiagram
               state={state}
               onPositionsChange={() => {}}
-              generatedImageUrl={generatedImageUrl || undefined}
+              generatedImageUrl={activeView === 'zonemap' && zoneMapHistory.length > 0 ? zoneMapHistory[selectedMapIndex] : undefined}
               onGenerate={handleGenerate}
               generating={generating}
               generateTrigger={generateTrigger}
             />
-            {generating && (
+            {/* Mobile toggle */}
+          {zoneMapHistory.length > 0 && (
+            <div className="lg:hidden flex items-center justify-between px-3 pt-2 pb-1">
+              <div className="flex bg-white/5 rounded-lg p-0.5 gap-0.5">
+                <button onClick={() => setActiveView('bubbles')}
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition ${activeView === 'bubbles' ? 'bg-[#C4A35A] text-black' : 'text-gray-400'}`}>
+                  ○ Bubbles
+                </button>
+                <button onClick={() => setActiveView('zonemap')}
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition ${activeView === 'zonemap' ? 'bg-[#C4A35A] text-black' : 'text-gray-400'}`}>
+                  ⊞ Zone Map
+                </button>
+              </div>
+              {zoneMapHistory.length > 1 && (
+                <div className="flex items-center gap-1.5 pr-1">
+                  {zoneMapHistory.map((_, i) => (
+                    <button key={i} onClick={() => { setSelectedMapIndex(i); setActiveView('zonemap') }}
+                      className={`w-2.5 h-2.5 rounded-full transition ${i === selectedMapIndex ? 'bg-[#C4A35A]' : 'bg-white/30'}`}/>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {generating && (
               <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-lg z-10">
                 <span className="w-10 h-10 border-4 border-[#C4A35A] border-t-transparent rounded-full animate-spin mb-4"/>
                 <p className="text-[#C4A35A] font-semibold text-sm tracking-wide">Generating Zone Map...</p>
