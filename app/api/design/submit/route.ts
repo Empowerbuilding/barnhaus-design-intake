@@ -41,6 +41,12 @@ export async function POST(req: NextRequest) {
     hallway_type: formData.hallwayType || null,
     roof_pitch: formData.roofPitch || null,
 
+    // Zone map + bubble diagram
+    floor_plan_image_urls: formData.zoneMapUrls || [],
+    zone_map_url: formData.selectedZoneMap || null,
+    bubble_positions: formData.bubblePositions || {},
+    bubble_data: formData.bubbles || [],
+
     status: 'new',
     submitted_at: new Date().toISOString(),
   }

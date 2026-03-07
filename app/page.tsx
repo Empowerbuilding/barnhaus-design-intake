@@ -24,6 +24,8 @@ export default function DesignFlow() {
   const [zoneMapHistory, setZoneMapHistory] = useState<string[]>([])
   const [activeView, setActiveView] = useState<'bubbles' | 'zonemap'>('bubbles')
   const [selectedMapIndex, setSelectedMapIndex] = useState<number>(0)
+  const [bubblePositions, setBubblePositions] = useState<Record<string, { x: number; y: number }>>({})
+  const [lastBubbles, setLastBubbles] = useState<{id:string;label:string;x:number;y:number;r:number}[]>([])
   const [generating, setGenerating] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(true)
   const [generateTrigger, setGenerateTrigger] = useState(0)
@@ -68,7 +70,14 @@ export default function DesignFlow() {
       await fetch('/api/design/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...state, ...contactInfo }),
+        body: JSON.stringify({
+          ...state,
+          ...contactInfo,
+          zoneMapUrls: zoneMapHistory,
+          selectedZoneMap: zoneMapHistory[selectedMapIndex] || null,
+          bubblePositions,
+          bubbles: lastBubbles,
+        }),
       })
       setSubmitted(true)
     } catch {}
@@ -76,6 +85,7 @@ export default function DesignFlow() {
   }
 
   const handleGenerate = async (imageBase64: string, bubbles: {id:string;label:string;x:number;y:number;r:number}[]) => {
+    setLastBubbles(bubbles)
     setGenerating(true)
     try {
       const res = await fetch('/api/generate-floorplan', {
@@ -210,7 +220,7 @@ export default function DesignFlow() {
           <div className="relative flex-1">
             <BubbleDiagram
               state={state}
-              onPositionsChange={() => {}}
+              onPositionsChange={(p) => setBubblePositions(p)}
               generatedImageUrl={activeView === 'zonemap' && zoneMapHistory.length > 0 ? zoneMapHistory[selectedMapIndex] : undefined}
               onGenerate={handleGenerate}
               generating={generating}
