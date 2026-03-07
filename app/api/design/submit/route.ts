@@ -41,6 +41,12 @@ export async function POST(req: NextRequest) {
     hallway_type: formData.hallwayType || null,
     roof_pitch: formData.roofPitch || null,
 
+    // Step 7 - Architecture
+    wall_height: formData.architecture?.wall_height || 'standard',
+    zone_heights: formData.architecture?.zone_heights || null,
+    window_style: formData.architecture?.window_style || 'fixed',
+    exterior_material: formData.architecture?.exterior_material || null,
+
     // Zone map + bubble diagram
     zone_map_url: formData.selectedZoneMap || null,
     bubble_positions: formData.bubblePositions || {},

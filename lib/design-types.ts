@@ -19,6 +19,13 @@ export interface Features {
   outdoor_kitchen: boolean
 }
 
+export interface Architecture {
+  wall_height?: 'standard' | 'tall' | 'dramatic'
+  zone_heights?: Record<string, number>
+  window_style?: 'fixed' | 'awning' | 'casement' | 'floor-to-ceiling'
+  exterior_material?: 'board-batten' | 'metal-panels' | 'stucco' | 'brick' | 'mixed'
+}
+
 export interface DesignState {
   sessionId?: string
   step: number
@@ -34,6 +41,7 @@ export interface DesignState {
   garageAttachment?: GarageAttachment
   stories?: 1 | 2
   features?: Partial<Features>
+  architecture?: Architecture
   firstName?: string
   lastName?: string
   email?: string
