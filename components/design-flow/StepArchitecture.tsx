@@ -43,29 +43,40 @@ export default function StepArchitecture({
       <h2 className="text-2xl font-bold mb-2">Architecture Details</h2>
       <p className="text-gray-400 text-sm mb-6">Fine-tune the massing, heights, and materials.</p>
 
-      {/* Wall Height */}
+      {/* Wall Height — picks base AND auto-fills all zones */}
       <div className="mb-6">
-        <p className="text-sm font-semibold text-white mb-3">Base Wall Height</p>
-        <div className="grid grid-cols-3 gap-2">
-          {([['standard', '10 ft', 'Standard'], ['tall', '11 ft', 'Tall'], ['dramatic', '12 ft', 'Dramatic']] as const).map(([val, ft, label]) => (
-            <button key={val} onClick={() => onChange({ ...value, wall_height: val })}
-              className={`flex flex-col items-center px-3 py-3 rounded-lg border text-sm transition ${
-                value.wall_height === val
-                  ? 'border-[#C4A35A] bg-[#C4A35A]/10 text-white'
-                  : 'border-white/10 bg-white/5 text-gray-300 hover:border-white/30'
-              }`}>
-              <span className="text-lg font-bold text-[#C4A35A]">{ft}</span>
-              <span className="text-xs mt-0.5">{label}</span>
-            </button>
-          ))}
+        <p className="text-sm font-semibold text-white mb-1">Wall Height</p>
+        {zones && zones.length > 1 && (
+          <p className="text-xs text-gray-500 mb-3">Sets all wings. Override individual wings below if you want varied heights.</p>
+        )}
+        <div className="grid grid-cols-3 gap-2 mb-0">
+          {([['standard', '10 ft', 'Standard'], ['tall', '11 ft', 'Tall'], ['dramatic', '12 ft', 'Dramatic']] as const).map(([val, ft, label]) => {
+            const h = val === 'standard' ? 10 : val === 'tall' ? 11 : 12
+            return (
+              <button key={val} onClick={() => {
+                // Auto-fill all zone heights with the selected base height
+                const newZoneHeights: Record<string, number> = {}
+                if (zones) zones.forEach(z => { newZoneHeights[z.key] = h })
+                onChange({ ...value, wall_height: val, zone_heights: newZoneHeights })
+              }}
+                className={`flex flex-col items-center px-3 py-3 rounded-lg border text-sm transition ${
+                  value.wall_height === val
+                    ? 'border-[#C4A35A] bg-[#C4A35A]/10 text-white'
+                    : 'border-white/10 bg-white/5 text-gray-300 hover:border-white/30'
+                }`}>
+                <span className="text-lg font-bold text-[#C4A35A]">{ft}</span>
+                <span className="text-xs mt-0.5">{label}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* Per-Zone Heights */}
-      {zones && zones.length > 1 && (
-        <div className="mb-6">
-          <p className="text-sm font-semibold text-white mb-1">Wall Height Per Wing</p>
-          <p className="text-xs text-gray-500 mb-3">Each wing can be a different height — creates a dramatic roofline while staying single story.</p>
+      {/* Per-Zone Override — only show if multi-zone shape */}
+      {zones && zones.length > 1 && value.wall_height && (
+        <div className="mb-6 bg-white/5 rounded-lg p-4 border border-white/10">
+          <p className="text-sm font-semibold text-white mb-1">Override Per Wing <span className="text-gray-500 font-normal text-xs">(optional)</span></p>
+          <p className="text-xs text-gray-500 mb-4">Bump a specific wing higher for a dynamic roofline — all single story.</p>
           <div className="space-y-4">
             {zones.map(zone => {
               const current = value.zone_heights?.[zone.key] ?? fallback
