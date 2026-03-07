@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const { sessionId, step, style, sqft, bedrooms, bathrooms, shape,
-    streetFacing, viewFacing, priorities, garageCount, garageAttachment, features, architecture } = body
+    streetFacing, viewFacing, priorities, garageCount, garageAttachment, features } = body
 
   // Map new flow fields → existing design_intake_submissions columns
   const garageCarMap: Record<string, string> = {
@@ -29,11 +29,6 @@ export async function POST(req: NextRequest) {
     // Store priorities + features as JSON in additional_items
     additional_items: JSON.stringify({ step, priorities: priorities || [], features: features || {}, viewFacing }),
     updated_at: new Date().toISOString(),
-    // Architecture step fields
-    ...(architecture?.wall_height     && { wall_height: architecture.wall_height }),
-    ...(architecture?.zone_heights    && { zone_heights: architecture.zone_heights }),
-    ...(architecture?.window_style    && { window_style: architecture.window_style }),
-    ...(architecture?.exterior_material && { exterior_material: architecture.exterior_material }),
   }
 
   // Map features to existing columns
