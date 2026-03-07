@@ -50,7 +50,7 @@ export default function DesignFlow() {
       const res = await fetch('/api/design/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...state, step: nextStep }),
+        body: JSON.stringify({ ...state, step: nextStep, architecture: state.architecture || {} }),
       })
       const data = await res.json()
       if (data.sessionId && !state.sessionId) {
