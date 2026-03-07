@@ -150,6 +150,10 @@ interface FormData {
   greatRoomVaulted: string;
   secondaryCeilingHeight: string;
   masterCeilingHeight: string;
+  wallHeight: string;
+  windowStyle: string;
+  accentWalls: Record<string, boolean>;
+  exteriorMaterial: string;
   fireplace: string;
   fireplaceType: Record<string, boolean>;
   porchLocations: Record<string, boolean>;
@@ -235,6 +239,14 @@ const INITIAL_FORM_DATA: FormData = {
   greatRoomVaulted: '',
   secondaryCeilingHeight: '10',
   masterCeilingHeight: '10',
+  wallHeight: 'standard',
+  windowStyle: 'fixed',
+  accentWalls: {
+    greatRoomTall: false,
+    entryTall: false,
+    fullPerimeterTall: false,
+  },
+  exteriorMaterial: '',
   fireplace: '',
   fireplaceType: {
     woodBurning: false,
@@ -783,6 +795,61 @@ const ConstructionForm = () => {
           />
         </FormField>
       </div>
+
+      <FormField label="Wall Height">
+        <RadioGroup
+          name="wallHeight"
+          options={[
+            { label: 'Standard (10 ft)', value: 'standard' },
+            { label: 'Tall (11 ft)', value: 'tall' },
+            { label: 'Dramatic (12 ft)', value: 'dramatic' },
+          ]}
+          value={formData.wallHeight}
+          onChange={handleInputChange}
+        />
+      </FormField>
+
+      <FormField label="Accent Wall Heights">
+        <CheckboxGroup
+          section="accentWalls"
+          options={[
+            { label: 'Great Room — raised to 14 ft', value: 'greatRoomTall' },
+            { label: 'Entry — raised to 12 ft', value: 'entryTall' },
+            { label: 'Full perimeter — all walls tall', value: 'fullPerimeterTall' },
+          ]}
+          values={formData.accentWalls}
+          onChange={handleCheckboxChange}
+        />
+      </FormField>
+
+      <FormField label="Window Style">
+        <RadioGroup
+          name="windowStyle"
+          options={[
+            { label: 'Fixed (standard)', value: 'fixed' },
+            { label: 'Awning', value: 'awning' },
+            { label: 'Casement', value: 'casement' },
+            { label: 'Floor-to-ceiling', value: 'floor-to-ceiling' },
+          ]}
+          value={formData.windowStyle}
+          onChange={handleInputChange}
+        />
+      </FormField>
+
+      <FormField label="Exterior Material">
+        <RadioGroup
+          name="exteriorMaterial"
+          options={[
+            { label: 'Board & Batten', value: 'board-batten' },
+            { label: 'Metal Panels', value: 'metal-panels' },
+            { label: 'Stucco', value: 'stucco' },
+            { label: 'Brick', value: 'brick' },
+            { label: 'Mixed', value: 'mixed' },
+          ]}
+          value={formData.exteriorMaterial}
+          onChange={handleInputChange}
+        />
+      </FormField>
 
       <FormField label="Fireplace">
         <RadioGroup

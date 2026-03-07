@@ -39,6 +39,10 @@ interface FormDataObject {
   greatRoomVaulted: string;
   secondaryCeilingHeight: string;
   masterCeilingHeight: string;
+  wallHeight: string;
+  windowStyle: string;
+  accentWalls: Record<string, boolean>;
+  exteriorMaterial: string;
   fireplace: string;
   fireplaceType: Record<string, boolean>;
   porchLocations: Record<string, boolean>;
@@ -550,6 +554,10 @@ export async function POST(request: Request) {
         garage_roof_style: formDataObj.garageRoofStyle || null,
         hallway_type: formDataObj.hallwayType || null,
         floor_plan_image_urls: uploadedFloorPlans.map(fp => fp.url),
+        wall_height: formDataObj.wallHeight || 'standard',
+        window_style: formDataObj.windowStyle || 'fixed',
+        accent_walls: formDataObj.accentWalls,
+        exterior_material: formDataObj.exteriorMaterial || null,
       })
       .eq('id', data[0].id);
 
