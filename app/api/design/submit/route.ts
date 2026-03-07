@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
     living: formData.sqft ? String(formData.sqft) : null,
     bedrooms: formData.bedrooms ? String(formData.bedrooms) : null,
     bathrooms: formData.bathrooms ? String(formData.bathrooms) : null,
+    full_baths: formData.fullBaths || null,
+    half_baths: formData.halfBaths || null,
+    bath_config: formData.bathConfig || null,
     stories: formData.stories || null,
 
     // Step 3 - Shape
@@ -31,8 +34,13 @@ export async function POST(req: NextRequest) {
     garage_cars: formData.garageCount ? parseInt(formData.garageCount as string) : null,
     garage_type: formData.garageAttachment || null,
 
-    // Step 6 - Features
-    desired_rooms: formData.features || {},
+    // Step 6 - Features + expanded lifestyle data
+    desired_rooms: {
+      ...(formData.features || {}),
+      bath_config: formData.bathConfig || null,
+      master_suite: formData.masterSuite || null,
+      lifestyle: formData.lifestyle || null,
+    },
 
     // Revit agent fields
     kitchen_layout: formData.kitchenLayout || null,

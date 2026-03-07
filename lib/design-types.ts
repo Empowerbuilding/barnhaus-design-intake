@@ -6,6 +6,30 @@ export type GarageAttachment = 'attached_left' | 'attached_right' | 'detached'
 
 export type Priority = 'master_privacy' | 'open_living' | 'outdoor_connection' | 'garage_access' | 'home_office'
 
+export type MasterLocation = 'far_left' | 'far_right' | 'rear_center' | 'front_center' | 'no_preference'
+export type ClosetConfig = 'single_wic' | 'his_and_hers' | 'no_preference'
+export type BathConfig = 'ensuite_each' | 'shared_hall' | 'jack_and_jill' | 'mix'
+
+export interface MasterSuite {
+  location?: MasterLocation
+  closet_config?: ClosetConfig
+  has_freestanding_tub?: boolean
+  has_walk_in_shower?: boolean
+  outdoor_access?: boolean
+}
+
+export interface Lifestyle {
+  has_pets?: boolean
+  pet_wash_station?: boolean
+  vehicle_count?: number
+  has_workshop?: boolean
+  has_ev_charging?: boolean
+  entertaining_priority?: 'low' | 'medium' | 'high'
+  wfh_days?: 'never' | 'sometimes' | 'always'
+  kids_at_home?: boolean
+  multigenerational?: boolean
+}
+
 export interface Features {
   covered_back_porch: boolean
   covered_front_porch: boolean
@@ -33,6 +57,9 @@ export interface DesignState {
   sqft?: number
   bedrooms?: number
   bathrooms?: number
+  fullBaths?: number
+  halfBaths?: number
+  bathConfig?: BathConfig
   shape?: Shape
   streetFacing?: Direction
   viewFacing?: Direction
@@ -41,6 +68,8 @@ export interface DesignState {
   garageAttachment?: GarageAttachment
   stories?: 1 | 2
   features?: Partial<Features>
+  masterSuite?: Partial<MasterSuite>
+  lifestyle?: Partial<Lifestyle>
   architecture?: Architecture
   firstName?: string
   lastName?: string

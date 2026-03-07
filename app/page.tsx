@@ -9,11 +9,13 @@ import StepPriorities from '@/components/design-flow/StepPriorities'
 import StepGarage from '@/components/design-flow/StepGarage'
 import StepFeatures from '@/components/design-flow/StepFeatures'
 import StepArchitecture from '@/components/design-flow/StepArchitecture'
+import StepMasterSuite from '@/components/design-flow/StepMasterSuite'
+import StepLifestyle from '@/components/design-flow/StepLifestyle'
 import StepContact from '@/components/design-flow/StepContact'
 
-const TOTAL_STEPS = 8
+const TOTAL_STEPS = 10
 
-const STEP_LABELS = ['Style', 'Size', 'Shape', 'Priorities', 'Garage', 'Features', 'Architecture', 'Contact']
+const STEP_LABELS = ['Style', 'Size', 'Shape', 'Priorities', 'Garage', 'Features', 'Master Suite', 'Lifestyle', 'Architecture', 'Contact']
 
 const DEFAULT_PRIORITIES = ['master_privacy', 'open_living', 'outdoor_connection', 'garage_access', 'home_office'] as const
 const initialState: DesignState = { step: 1, priorities: [...DEFAULT_PRIORITIES] as import('@/lib/design-types').Priority[] }
@@ -113,6 +115,8 @@ export default function DesignFlow() {
       case 6: return true
       case 7: return true
       case 8: return true
+      case 9: return true
+      case 10: return true
       default: return false
     }
   }
@@ -172,15 +176,17 @@ export default function DesignFlow() {
         <div className="hidden lg:flex flex-1 lg:max-w-[55%] px-6 py-8 flex-col">
           <div className="flex-1">
             {state.step === 1 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
-            {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} bathrooms={state.bathrooms} stories={state.stories} onChange={patch => update(patch)} />}
+            {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} fullBaths={state.fullBaths} halfBaths={state.halfBaths} bathConfig={state.bathConfig} stories={state.stories} onChange={patch => update(patch)} />}
             {state.step === 3 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
             {state.step === 4 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
             {state.step === 5 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} onChange={patch => update(patch)} />}
             {state.step === 6 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
-            {state.step === 7 && <StepArchitecture value={state.architecture || {}} shape={state.shape} onChange={v => update({ architecture: v })} />}
-            {state.step === 8 && <StepContact onSubmit={handleSubmit} saving={saving} />}
+            {state.step === 7 && <StepMasterSuite value={state.masterSuite || {}} onChange={v => update({ masterSuite: v })} />}
+            {state.step === 8 && <StepLifestyle value={state.lifestyle || {}} onChange={v => update({ lifestyle: v })} />}
+            {state.step === 9 && <StepArchitecture value={state.architecture || {}} shape={state.shape} onChange={v => update({ architecture: v })} />}
+            {state.step === 10 && <StepContact onSubmit={handleSubmit} saving={saving} />}
           </div>
-          {state.step < 8 && (
+          {state.step < 10 && (
             <div className="flex gap-3 mt-8">
               {state.step > 1 && (
                 <button onClick={back} className="px-6 py-3 border border-white/20 text-white rounded hover:bg-white/10 transition text-sm">← Back</button>
@@ -294,15 +300,17 @@ export default function DesignFlow() {
             </div>
             <div className="px-5 py-6">
               {state.step === 1 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
-              {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} bathrooms={state.bathrooms} stories={state.stories} onChange={patch => update(patch)} />}
+              {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} fullBaths={state.fullBaths} halfBaths={state.halfBaths} bathConfig={state.bathConfig} stories={state.stories} onChange={patch => update(patch)} />}
               {state.step === 3 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
               {state.step === 4 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
               {state.step === 5 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} onChange={patch => update(patch)} />}
               {state.step === 6 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
-            {state.step === 7 && <StepArchitecture value={state.architecture || {}} shape={state.shape} onChange={v => update({ architecture: v })} />}
-              {state.step === 8 && <StepContact onSubmit={handleSubmit} saving={saving} />}
+            {state.step === 7 && <StepMasterSuite value={state.masterSuite || {}} onChange={v => update({ masterSuite: v })} />}
+              {state.step === 8 && <StepLifestyle value={state.lifestyle || {}} onChange={v => update({ lifestyle: v })} />}
+              {state.step === 9 && <StepArchitecture value={state.architecture || {}} shape={state.shape} onChange={v => update({ architecture: v })} />}
+              {state.step === 10 && <StepContact onSubmit={handleSubmit} saving={saving} />}
             </div>
-            {state.step < 8 && (
+            {state.step < 10 && (
               <div className="sticky bottom-0 bg-[#1A1A1A] border-t border-white/10 px-5 py-4 flex gap-3">
                 {state.step > 1 && (
                   <button onClick={() => { back(); setSheetOpen(false) }}
@@ -318,7 +326,7 @@ export default function DesignFlow() {
                 <button onClick={() => { if (canNext()) { next() } }}
                   disabled={!canNext() || saving}
                   className="flex-1 py-3 bg-[#C4A35A] text-black font-semibold rounded-lg disabled:opacity-40 transition text-sm">
-                  {saving ? 'Saving...' : state.step === 7 ? 'Almost done →' : 'Next →'}
+                  {saving ? 'Saving...' : state.step === 9 ? 'Almost done →' : 'Next →'}
                 </button>
               </div>
             )}
