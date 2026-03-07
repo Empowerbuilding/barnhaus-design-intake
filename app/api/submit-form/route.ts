@@ -43,6 +43,7 @@ interface FormDataObject {
   windowStyle: string;
   accentWalls: Record<string, boolean>;
   exteriorMaterial: string;
+  zoneHeights: Record<string, string>;
   fireplace: string;
   fireplaceType: Record<string, boolean>;
   porchLocations: Record<string, boolean>;
@@ -558,6 +559,8 @@ export async function POST(request: Request) {
         window_style: formDataObj.windowStyle || 'fixed',
         accent_walls: formDataObj.accentWalls,
         exterior_material: formDataObj.exteriorMaterial || null,
+        zone_heights: formDataObj.zoneHeights && Object.keys(formDataObj.zoneHeights).length > 0
+          ? formDataObj.zoneHeights : null,
       })
       .eq('id', data[0].id);
 

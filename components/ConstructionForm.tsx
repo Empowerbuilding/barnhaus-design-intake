@@ -154,6 +154,7 @@ interface FormData {
   windowStyle: string;
   accentWalls: Record<string, boolean>;
   exteriorMaterial: string;
+  zoneHeights: Record<string, string>;
   fireplace: string;
   fireplaceType: Record<string, boolean>;
   porchLocations: Record<string, boolean>;
@@ -247,6 +248,7 @@ const INITIAL_FORM_DATA: FormData = {
     fullPerimeterTall: false,
   },
   exteriorMaterial: '',
+  zoneHeights: {},
   fireplace: '',
   fireplaceType: {
     woodBurning: false,
@@ -268,6 +270,22 @@ const INITIAL_FORM_DATA: FormData = {
 };
 
 const STEP_LABELS = ['About You', 'The Build', 'Rooms', 'Architecture', 'Inspiration'];
+
+// Maps house shape → named zones with display labels
+const SHAPE_ZONES: Record<string, { key: string; label: string }[]> = {
+  rectangle:  [{ key: 'main',           label: 'Main House' }],
+  'l-shape':  [{ key: 'main_wing',      label: 'Main Wing' },
+               { key: 'secondary_wing', label: 'Secondary Wing' }],
+  'u-shape':  [{ key: 'left_wing',      label: 'Left Wing' },
+               { key: 'center',         label: 'Center / Living' },
+               { key: 'right_wing',     label: 'Right Wing' }],
+  't-shape':  [{ key: 'main_body',      label: 'Main Body' },
+               { key: 'rear_wing',      label: 'Rear Wing' }],
+  courtyard:  [{ key: 'left_wing',      label: 'Left Wing' },
+               { key: 'center',         label: 'Center / Entry' },
+               { key: 'right_wing',     label: 'Right Wing' }],
+};
+const HEIGHT_OPTIONS = ['9', '10', '11', '12', '14', '16'];
 
 const ConstructionForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -808,6 +826,40 @@ const ConstructionForm = () => {
           onChange={handleInputChange}
         />
       </FormField>
+
+      {SHAPE_ZONES[formData.houseShape] && (
+        <FormField label="Wall Height Per Zone">
+          <p className="text-xs text-gray-500 mb-3">
+            Each wing/zone can have a different wall height — creates a dynamic roofline while staying single story.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {SHAPE_ZONES[formData.houseShape].map(zone => (
+              <div key={zone.key} className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">{zone.label}</label>
+                <div className="flex gap-2 flex-wrap">
+                  {HEIGHT_OPTIONS.map(h => (
+                    <button
+                      key={h}
+                      type="button"
+                      onClick={() => setFormData(prev => ({
+                        ...prev,
+                        zoneHeights: { ...prev.zoneHeights, [zone.key]: h }
+                      }))}
+                      className={`px-3 py-1.5 rounded-md border text-sm font-medium transition-all ${
+                        (formData.zoneHeights[zone.key] || formData.wallHeight === 'standard' ? '10' : formData.wallHeight === 'tall' ? '11' : '12') === h
+                          ? 'border-[#D4A843] bg-amber-50 text-amber-800'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {h} ft
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </FormField>
+      )}
 
       <FormField label="Accent Wall Heights">
         <CheckboxGroup
