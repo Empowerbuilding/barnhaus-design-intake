@@ -73,7 +73,6 @@ export default function DesignFlow() {
         body: JSON.stringify({
           ...state,
           ...contactInfo,
-          zoneMapUrls: zoneMapHistory,
           selectedZoneMap: zoneMapHistory[selectedMapIndex] || null,
           bubblePositions,
           bubbles: lastBubbles,
@@ -206,11 +205,14 @@ export default function DesignFlow() {
                 </button>
               </div>
               {zoneMapHistory.length > 1 && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Pick one:</span>
                   {zoneMapHistory.map((_, i) => (
                     <button key={i} onClick={() => { setSelectedMapIndex(i); setActiveView('zonemap') }}
-                      className={`w-2 h-2 rounded-full transition ${i === selectedMapIndex ? 'bg-[#C4A35A]' : 'bg-white/30 hover:bg-white/60'}`}
-                      title={`Zone Map ${i + 1}`}/>
+                      className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition ${i === selectedMapIndex ? 'bg-[#C4A35A] text-black' : 'bg-white/20 text-gray-400 hover:bg-white/40'}`}
+                      title={`Zone Map ${i + 1}`}>
+                      {i === selectedMapIndex ? '✓' : i + 1}
+                    </button>
                   ))}
                 </div>
               )}
@@ -241,9 +243,12 @@ export default function DesignFlow() {
               </div>
               {zoneMapHistory.length > 1 && (
                 <div className="flex items-center gap-1.5 pr-1">
+                  <span className="text-xs text-gray-500">Pick:</span>
                   {zoneMapHistory.map((_, i) => (
                     <button key={i} onClick={() => { setSelectedMapIndex(i); setActiveView('zonemap') }}
-                      className={`w-2.5 h-2.5 rounded-full transition ${i === selectedMapIndex ? 'bg-[#C4A35A]' : 'bg-white/30'}`}/>
+                      className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition ${i === selectedMapIndex ? 'bg-[#C4A35A] text-black' : 'bg-white/20 text-gray-400'}`}>
+                      {i === selectedMapIndex ? '✓' : i + 1}
+                    </button>
                   ))}
                 </div>
               )}
