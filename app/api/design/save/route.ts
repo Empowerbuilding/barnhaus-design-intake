@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
     pad_direction: streetFacing || null,
     garage_cars: garageCount ? garageCarMap[garageCount] || null : null,
     garage_type: garageAttachment || null,
+    garage_orientation: body.garageOrientation || null,
     // Store priorities + features as JSON in additional_items
     additional_items: JSON.stringify({ step, priorities: priorities || [], features: features || {}, viewFacing }),
     updated_at: new Date().toISOString(),

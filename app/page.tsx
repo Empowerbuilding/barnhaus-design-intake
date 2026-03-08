@@ -179,7 +179,7 @@ export default function DesignFlow() {
             {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} fullBaths={state.fullBaths} halfBaths={state.halfBaths} bathConfig={state.bathConfig} stories={state.stories} onChange={patch => update(patch)} />}
             {state.step === 3 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
             {state.step === 4 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
-            {state.step === 5 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} onChange={patch => update(patch)} />}
+            {state.step === 5 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} garageOrientation={state.garageOrientation} onChange={patch => update(patch)} />}
             {state.step === 6 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
             {state.step === 7 && <StepMasterSuite value={state.masterSuite || {}} onChange={v => update({ masterSuite: v })} />}
             {state.step === 8 && <StepLifestyle value={state.lifestyle || {}} onChange={v => update({ lifestyle: v })} />}
@@ -303,7 +303,7 @@ export default function DesignFlow() {
               {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} fullBaths={state.fullBaths} halfBaths={state.halfBaths} bathConfig={state.bathConfig} stories={state.stories} onChange={patch => update(patch)} />}
               {state.step === 3 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
               {state.step === 4 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
-              {state.step === 5 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} onChange={patch => update(patch)} />}
+              {state.step === 5 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} garageOrientation={state.garageOrientation} onChange={patch => update(patch)} />}
               {state.step === 6 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
             {state.step === 7 && <StepMasterSuite value={state.masterSuite || {}} onChange={v => update({ masterSuite: v })} />}
               {state.step === 8 && <StepLifestyle value={state.lifestyle || {}} onChange={v => update({ lifestyle: v })} />}

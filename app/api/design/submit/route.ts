@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     // Step 5 - Garage
     garage_cars: formData.garageCount ? parseInt(formData.garageCount as string) : null,
     garage_type: formData.garageAttachment || null,
+    garage_orientation: formData.garageOrientation || null,
 
     // Step 6 - Features + expanded lifestyle data
     desired_rooms: {
@@ -41,6 +42,11 @@ export async function POST(req: NextRequest) {
       master_suite: formData.masterSuite || null,
       lifestyle: formData.lifestyle || null,
     },
+    porch_type: formData.features ? [
+      formData.features.covered_front_porch && 'front',
+      formData.features.covered_back_porch && 'rear',
+      formData.features.screened_porch && 'screened',
+    ].filter(Boolean).join('+') || 'none' : null,
 
     // Revit agent fields
     kitchen_layout: formData.kitchenLayout || null,

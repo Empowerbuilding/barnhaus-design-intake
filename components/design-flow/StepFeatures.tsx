@@ -4,6 +4,7 @@ import { Features } from '@/lib/design-types'
 const FEATURE_LIST: { key: keyof Features; label: string; icon: string }[] = [
   { key: 'covered_back_porch', label: 'Covered Back Porch', icon: '🌿' },
   { key: 'covered_front_porch', label: 'Covered Front Porch', icon: '🏡' },
+  { key: 'screened_porch', label: 'Screened Porch', icon: '🪟' },
   { key: 'vaulted_great_room', label: 'Vaulted Great Room', icon: '⬆️' },
   { key: 'butler_pantry', label: "Butler's Pantry", icon: '🍾' },
   { key: 'mudroom', label: 'Mudroom', icon: '👢' },

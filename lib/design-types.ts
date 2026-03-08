@@ -3,6 +3,7 @@ export type Shape = 'rectangle' | 'l-shape' | 't-shape' | 'u-shape' | 'courtyard
 export type Direction = 'N' | 'S' | 'E' | 'W'
 export type GarageCount = 'none' | '1-car' | '2-car' | '3-car'
 export type GarageAttachment = 'attached_left' | 'attached_right' | 'detached'
+export type GarageOrientation = 'front_facing' | 'side_loaded'
 
 export type Priority = 'master_privacy' | 'open_living' | 'outdoor_connection' | 'garage_access' | 'home_office'
 
@@ -33,6 +34,7 @@ export interface Lifestyle {
 export interface Features {
   covered_back_porch: boolean
   covered_front_porch: boolean
+  screened_porch: boolean
   vaulted_great_room: boolean
   butler_pantry: boolean
   mudroom: boolean
@@ -66,6 +68,7 @@ export interface DesignState {
   priorities?: Priority[]
   garageCount?: GarageCount
   garageAttachment?: GarageAttachment
+  garageOrientation?: GarageOrientation
   stories?: 1 | 2
   features?: Partial<Features>
   masterSuite?: Partial<MasterSuite>
