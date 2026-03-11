@@ -58,16 +58,21 @@ const SQFT_PRESETS = [
 
 // Convert sqft to pixel dimensions at zoom ~17 (1 px ≈ 0.6m at z17 satellite)
 // Assume 1.6:1 width:depth ratio, single story footprint ≈ sqft * 0.85 (subtract garage/porch)
-function sqftToPixels(sf: number): { w: number; h: number } {
-  // Map sqft range 1000–5000 to pixel range 48–130px wide, 36–90px tall (1.45:1 ratio)
-  const t = Math.min(1, Math.max(0, (sf - 1000) / 4000))
-  const w = Math.round(48 + t * 82)
-  const h = Math.round(36 + t * 54)
-  return { w, h }
+function sqftToPixels(sf: number, zoom: number, lat: number): { w: number; h: number } {
+  // Real-world dimensions assuming 1.6:1 ratio, 80% of sqft is footprint
+  const depthFt = Math.sqrt(sf * 0.8 / 1.6)
+  const widthFt = depthFt * 1.6
+  // Mapbox projection: meters per pixel at this zoom + lat
+  const metersPerPx = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom)
+  const feetPerPx = metersPerPx * 3.28084
+  return {
+    w: Math.round(Math.max(20, widthFt / feetPerPx)),
+    h: Math.round(Math.max(14, depthFt / feetPerPx)),
+  }
 }
 
-function makeHouseEl(rot: number, sf: number): HTMLElement {
-  const { w, h } = sqftToPixels(sf)
+function makeHouseEl(rot: number, sf: number, zoom: number, lat: number): HTMLElement {
+  const { w, h } = sqftToPixels(sf, zoom, lat)
   const wrap = document.createElement('div')
   wrap.style.cssText = `width:${w}px;height:${h}px;cursor:grab;`
   wrap.innerHTML = `
@@ -141,14 +146,14 @@ export default function StepLot({ state, update, onNext }: Props) {
     updateHouseEl(rotation)
   }, [rotation, updateHouseEl])
 
-  // Re-place marker when sqft changes (resize footprint) — use refs to avoid stale closures
-  useEffect(() => {
-    sqftRef.current = sqft
-    if (!houseMarkerRef.current || !mapboxgl) return
+  // Rebuild marker at correct real-world scale
+  const rebuildMarker = useCallback(() => {
+    if (!houseMarkerRef.current || !mapRef.current || !mapboxgl) return
     const lnglat = houseMarkerRef.current.getLngLat()
     if (!lnglat) return
-    if (houseMarkerRef.current) houseMarkerRef.current.remove()
-    const el = makeHouseEl(rotationRef.current, sqft)
+    houseMarkerRef.current.remove()
+    const zoom = mapRef.current.getZoom()
+    const el = makeHouseEl(rotationRef.current, sqftRef.current, zoom, lnglat.lat)
     const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'center' })
       .setLngLat([lnglat.lng, lnglat.lat])
       .addTo(mapRef.current)
@@ -157,7 +162,13 @@ export default function StepLot({ state, update, onNext }: Props) {
       setLotData(prev => ({ ...prev, lot_lng: p.lng, lot_lat: p.lat }))
     })
     houseMarkerRef.current = marker
-  }, [sqft])
+  }, [])
+
+  // Re-place marker when sqft changes
+  useEffect(() => {
+    sqftRef.current = sqft
+    rebuildMarker()
+  }, [sqft, rebuildMarker])
 
   const loadBoundary = useCallback(async (lat: number, lng: number) => {
     try {
@@ -188,7 +199,9 @@ export default function StepLot({ state, update, onNext }: Props) {
   const placeHouseMarker = useCallback((lnglat: [number, number], rot: number, sf: number) => {
     if (!mapRef.current || !mapboxgl) return
     if (houseMarkerRef.current) houseMarkerRef.current.remove()
-    const el = makeHouseEl(rot, sf)
+    const zoom = mapRef.current.getZoom()
+    const lat = lnglat[1]
+    const el = makeHouseEl(rot, sf, zoom, lat)
     const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'center' })
       .setLngLat(lnglat)
       .addTo(mapRef.current)
@@ -251,8 +264,11 @@ export default function StepLot({ state, update, onNext }: Props) {
       }
     })
 
+    // Resize house marker on zoom so it stays true to real-world scale
+    map.on('zoom', () => { rebuildMarker() })
+
     mapRef.current = map
-  }, [lotData.lot_lat, lotData.lot_lng, loadBoundary, placeHouseMarker, rotation])
+  }, [lotData.lot_lat, lotData.lot_lng, loadBoundary, placeHouseMarker, rebuildMarker, rotation])
 
   // Init when mapbox loads and showMap becomes true
   useEffect(() => {
@@ -392,7 +408,7 @@ export default function StepLot({ state, update, onNext }: Props) {
           ))}
         </div>
         <p className="text-xs text-stone-600 mt-1.5">
-          Approx footprint ~{Math.round(Math.sqrt(sqft * 0.8 * 1.6))}ft wide × {Math.round(Math.sqrt(sqft * 0.8 / 1.6))}ft deep
+          ~{Math.round(Math.sqrt(sqft * 0.8 * 1.6))}ft × {Math.round(Math.sqrt(sqft * 0.8 / 1.6))}ft footprint · scales true-to-size on map
         </p>
       </div>
 
