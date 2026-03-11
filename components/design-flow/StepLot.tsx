@@ -305,7 +305,7 @@ export default function StepLot({ state, update, onNext }: Props) {
       {showMap && (
         <div className="space-y-4">
           {/* Map container */}
-          <div className="relative rounded-xl overflow-hidden border border-stone-700" style={{height: 260}}>
+          <div className="relative rounded-xl overflow-hidden border border-stone-700" style={{height: 420}}>
             <div ref={mapContainer} className="w-full h-full"/>
 
             {/* Lot info overlay */}
