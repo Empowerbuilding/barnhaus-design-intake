@@ -59,15 +59,11 @@ const SQFT_PRESETS = [
 // Convert sqft to pixel dimensions at zoom ~17 (1 px ≈ 0.6m at z17 satellite)
 // Assume 1.6:1 width:depth ratio, single story footprint ≈ sqft * 0.85 (subtract garage/porch)
 function sqftToPixels(sf: number): { w: number; h: number } {
-  const footprintSqft = sf * 0.8
-  const depthFt = Math.sqrt(footprintSqft / 1.6)
-  const widthFt = depthFt * 1.6
-  // At zoom 17, ~1px = 0.6m = ~2ft → scale factor
-  const scale = 0.48
-  return {
-    w: Math.round(Math.max(50, Math.min(160, widthFt * scale))),
-    h: Math.round(Math.max(38, Math.min(120, depthFt * scale))),
-  }
+  // Map sqft range 1000–5000 to pixel range 48–130px wide, 36–90px tall (1.45:1 ratio)
+  const t = Math.min(1, Math.max(0, (sf - 1000) / 4000))
+  const w = Math.round(48 + t * 82)
+  const h = Math.round(36 + t * 54)
+  return { w, h }
 }
 
 function makeHouseEl(rot: number, sf: number): HTMLElement {
@@ -396,7 +392,7 @@ export default function StepLot({ state, update, onNext }: Props) {
           ))}
         </div>
         <p className="text-xs text-stone-600 mt-1.5">
-          Footprint ~{sqftToPixels(sqft).w * 2}ft wide × {sqftToPixels(sqft).h * 2}ft deep
+          Approx footprint ~{Math.round(Math.sqrt(sqft * 0.8 * 1.6))}ft wide × {Math.round(Math.sqrt(sqft * 0.8 / 1.6))}ft deep
         </p>
       </div>
 
