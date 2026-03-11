@@ -380,14 +380,7 @@ export default function StepLot({ state, update, onNext }: Props) {
     onNext()
   }
 
-  // 4 sides relative to front door direction
-  const frontDir = rotationToCardinal(rotation)
-  const SIDE_OPTIONS = [
-    { id: rotationToCardinal(rotation),        label: 'Front',      pos: 'top' },
-    { id: rotationToSide(rotation, 90),        label: 'Right side', pos: 'right' },
-    { id: rotationToSide(rotation, 180),       label: 'Rear',       pos: 'bottom' },
-    { id: rotationToSide(rotation, 270),       label: 'Left side',  pos: 'left' },
-  ]
+
 
   const { widthFt, depthFt } = sqftToDimensions(sqft)
 
@@ -550,46 +543,55 @@ export default function StepLot({ state, update, onNext }: Props) {
             </div>
           </div>
 
-          {/* Garage side picker — house diagram */}
+          {/* Garage placement — as seen from the street */}
           <div>
-            <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">Which side does the garage face?</label>
-            <div className="relative w-full flex items-center justify-center" style={{height: 180}}>
-              {/* House box */}
-              <div className="w-24 h-20 bg-stone-800 border-2 border-stone-500 rounded-lg flex items-center justify-center">
-                <span className="text-stone-400 text-xs font-medium text-center leading-tight">
-                  {frontDir}<br/>FRONT
-                </span>
-              </div>
-
-              {/* Side buttons */}
-              {SIDE_OPTIONS.map(side => {
-                const posStyle: Record<string, string> = {
-                  top:    'top-0 left-1/2 -translate-x-1/2',
-                  bottom: 'bottom-0 left-1/2 -translate-x-1/2',
-                  left:   'left-0 top-1/2 -translate-y-1/2',
-                  right:  'right-0 top-1/2 -translate-y-1/2',
-                }
-                const isSelected = garageSide === side.id
-                const isFront = side.pos === 'top'
-                return (
-                  <button key={side.id}
-                    onClick={() => !isFront && setGarageSide(side.id)}
-                    disabled={isFront}
-                    className={`absolute px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${posStyle[side.pos]} ${
-                      isFront ? 'border-stone-700 text-stone-600 cursor-not-allowed' :
-                      isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-400' :
-                      'border-stone-600 bg-stone-800 text-stone-300 hover:border-amber-500/50'
-                    }`}>
-                    {isFront ? '🚪 Front' : isSelected ? `🚗 ${side.label}` : side.label}
-                  </button>
-                )
-              })}
+            <label className="block text-xs text-stone-400 mb-3 uppercase tracking-wider">
+              Garage location <span className="normal-case text-stone-500">— as seen from the street</span>
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { id: rotationToSide(rotation, 270), label: 'Left side', svg: (
+                  <svg viewBox="0 0 60 40" className="w-full h-10">
+                    <rect x="18" y="8" width="34" height="26" fill="#334155" stroke="#64748b" strokeWidth="1.5" rx="2"/>
+                    <rect x="2" y="16" width="16" height="18" fill="#475569" stroke="#64748b" strokeWidth="1.5" rx="1"/>
+                    <line x1="2" y1="22" x2="18" y2="22" stroke="#94a3b8" strokeWidth="1"/>
+                    <rect x="28" y="28" width="8" height="6" fill="#f59e0b" rx="1"/>
+                    <text x="30" y="6" textAnchor="middle" fontSize="5" fill="#94a3b8">STREET</text>
+                  </svg>
+                )},
+                { id: rotationToSide(rotation, 90), label: 'Right side', svg: (
+                  <svg viewBox="0 0 60 40" className="w-full h-10">
+                    <rect x="8" y="8" width="34" height="26" fill="#334155" stroke="#64748b" strokeWidth="1.5" rx="2"/>
+                    <rect x="42" y="16" width="16" height="18" fill="#475569" stroke="#64748b" strokeWidth="1.5" rx="1"/>
+                    <line x1="42" y1="22" x2="58" y2="22" stroke="#94a3b8" strokeWidth="1"/>
+                    <rect x="22" y="28" width="8" height="6" fill="#f59e0b" rx="1"/>
+                    <text x="30" y="6" textAnchor="middle" fontSize="5" fill="#94a3b8">STREET</text>
+                  </svg>
+                )},
+                { id: rotationToSide(rotation, 180), label: 'Rear / back', svg: (
+                  <svg viewBox="0 0 60 40" className="w-full h-10">
+                    <rect x="10" y="4" width="40" height="18" fill="#334155" stroke="#64748b" strokeWidth="1.5" rx="2"/>
+                    <rect x="18" y="22" width="24" height="14" fill="#475569" stroke="#64748b" strokeWidth="1.5" rx="1"/>
+                    <line x1="24" y1="22" x2="24" y2="36" stroke="#94a3b8" strokeWidth="1"/>
+                    <line x1="36" y1="22" x2="36" y2="36" stroke="#94a3b8" strokeWidth="1"/>
+                    <rect x="26" y="16" width="8" height="6" fill="#f59e0b" rx="1"/>
+                    <text x="30" y="42" textAnchor="middle" fontSize="5" fill="#94a3b8">STREET</text>
+                  </svg>
+                )},
+              ].map(opt => (
+                <button key={opt.id} onClick={() => setGarageSide(opt.id)}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                    garageSide === opt.id
+                      ? 'border-amber-500 bg-amber-500/10'
+                      : 'border-stone-700 bg-stone-800 hover:border-stone-500'
+                  }`}>
+                  {opt.svg}
+                  <span className={`text-xs font-medium ${garageSide === opt.id ? 'text-amber-400' : 'text-stone-300'}`}>
+                    {opt.label}
+                  </span>
+                </button>
+              ))}
             </div>
-            {garageSide && (
-              <p className="text-xs text-stone-500 text-center -mt-2">
-                Garage faces <span className="text-amber-400 font-semibold">{garageSide}</span>
-              </p>
-            )}
           </div>
         </div>
       )}
