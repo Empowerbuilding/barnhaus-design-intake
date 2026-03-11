@@ -103,6 +103,7 @@ export default function StepLot({ state, update, onNext }: Props) {
   const [suggestions, setSuggestions] = useState<{ place_name: string; center: [number, number] }[]>([])
   const [rotation, setRotation] = useState(state.lot?.house_rotation_deg ?? 180)
   const [driveway, setDriveway] = useState(state.lot?.driveway_approach ?? '')
+  const [garageSide, setGarageSide] = useState(state.lot?.garage_facing ?? '')
   const [flags, setFlags] = useState<string[]>(state.lot?.lot_flags ?? [])
   const [notes, setNotes] = useState(state.lot?.lot_notes ?? '')
   const [lotData, setLotData] = useState<Partial<LotData>>(state.lot ?? {})
@@ -361,7 +362,7 @@ export default function StepLot({ state, update, onNext }: Props) {
     return () => clearTimeout(t)
   }, [query, searchAddress])
 
-  const canProceed = !!lotData.lot_address && !!driveway
+  const canProceed = !!lotData.lot_address && !!driveway && !!garageSide
 
   const handleNext = () => {
     update({
@@ -370,7 +371,7 @@ export default function StepLot({ state, update, onNext }: Props) {
         ...lotData,
         house_rotation_deg: rotation,
         street_facing: rotationToCardinal(rotation),
-        garage_facing: rotationToSide(rotation, 270),
+        garage_facing: garageSide,
         driveway_approach: driveway,
         lot_flags: flags,
         lot_notes: notes,
@@ -378,6 +379,15 @@ export default function StepLot({ state, update, onNext }: Props) {
     })
     onNext()
   }
+
+  // 4 sides relative to front door direction
+  const frontDir = rotationToCardinal(rotation)
+  const SIDE_OPTIONS = [
+    { id: rotationToCardinal(rotation),        label: 'Front',      pos: 'top' },
+    { id: rotationToSide(rotation, 90),        label: 'Right side', pos: 'right' },
+    { id: rotationToSide(rotation, 180),       label: 'Rear',       pos: 'bottom' },
+    { id: rotationToSide(rotation, 270),       label: 'Left side',  pos: 'left' },
+  ]
 
   const { widthFt, depthFt } = sqftToDimensions(sqft)
 
@@ -525,17 +535,61 @@ export default function StepLot({ state, update, onNext }: Props) {
         </div>
       )}
 
-      {/* Driveway */}
+      {/* Driveway + Garage */}
       {showMap && substep !== 'address' && substep !== 'orient' && (
-        <div>
-          <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">Driveway approach</label>
-          <div className="grid grid-cols-3 gap-2">
-            {DRIVEWAY_OPTIONS.map(opt => (
-              <button key={opt.id} onClick={() => { setDriveway(opt.id); setSubstep('flags') }}
-                className={`py-3 px-2 rounded-xl border text-sm font-medium transition-all ${
-                  driveway===opt.id ? 'border-amber-500 bg-amber-500/10 text-amber-400' : 'border-stone-700 bg-stone-800 text-stone-300 hover:border-stone-500'
-                }`}>{opt.label}</button>
-            ))}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">Driveway approach from street</label>
+            <div className="grid grid-cols-3 gap-2">
+              {DRIVEWAY_OPTIONS.map(opt => (
+                <button key={opt.id} onClick={() => { setDriveway(opt.id); if (!substep.includes('flags')) setSubstep('flags') }}
+                  className={`py-3 px-2 rounded-xl border text-sm font-medium transition-all ${
+                    driveway===opt.id ? 'border-amber-500 bg-amber-500/10 text-amber-400' : 'border-stone-700 bg-stone-800 text-stone-300 hover:border-stone-500'
+                  }`}>{opt.label}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Garage side picker — house diagram */}
+          <div>
+            <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">Which side does the garage face?</label>
+            <div className="relative w-full flex items-center justify-center" style={{height: 180}}>
+              {/* House box */}
+              <div className="w-24 h-20 bg-stone-800 border-2 border-stone-500 rounded-lg flex items-center justify-center">
+                <span className="text-stone-400 text-xs font-medium text-center leading-tight">
+                  {frontDir}<br/>FRONT
+                </span>
+              </div>
+
+              {/* Side buttons */}
+              {SIDE_OPTIONS.map(side => {
+                const posStyle: Record<string, string> = {
+                  top:    'top-0 left-1/2 -translate-x-1/2',
+                  bottom: 'bottom-0 left-1/2 -translate-x-1/2',
+                  left:   'left-0 top-1/2 -translate-y-1/2',
+                  right:  'right-0 top-1/2 -translate-y-1/2',
+                }
+                const isSelected = garageSide === side.id
+                const isFront = side.pos === 'top'
+                return (
+                  <button key={side.id}
+                    onClick={() => !isFront && setGarageSide(side.id)}
+                    disabled={isFront}
+                    className={`absolute px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${posStyle[side.pos]} ${
+                      isFront ? 'border-stone-700 text-stone-600 cursor-not-allowed' :
+                      isSelected ? 'border-amber-500 bg-amber-500/20 text-amber-400' :
+                      'border-stone-600 bg-stone-800 text-stone-300 hover:border-amber-500/50'
+                    }`}>
+                    {isFront ? '🚪 Front' : isSelected ? `🚗 ${side.label}` : side.label}
+                  </button>
+                )
+              })}
+            </div>
+            {garageSide && (
+              <p className="text-xs text-stone-500 text-center -mt-2">
+                Garage faces <span className="text-amber-400 font-semibold">{garageSide}</span>
+              </p>
+            )}
           </div>
         </div>
       )}
