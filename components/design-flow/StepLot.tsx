@@ -118,6 +118,8 @@ export default function StepLot({ state, update, onNext }: Props) {
   const [mbLoaded, setMbLoaded] = useState(false)
   const suppressSearch = useRef(false)
   const [sqft, setSqft] = useState(state.sqft ?? 2500)
+  const sqftRef = useRef(state.sqft ?? 2500)
+  const rotationRef = useRef(state.lot?.house_rotation_deg ?? 180)
 
   // Load mapbox + draw dynamically
   useEffect(() => {
@@ -138,14 +140,27 @@ export default function StepLot({ state, update, onNext }: Props) {
     if (svg) svg.style.transform = `rotate(${deg}deg)`
   }, [])
 
-  useEffect(() => { updateHouseEl(rotation) }, [rotation, updateHouseEl])
-
-  // Re-place marker when sqft changes (resize footprint)
   useEffect(() => {
+    rotationRef.current = rotation
+    updateHouseEl(rotation)
+  }, [rotation, updateHouseEl])
+
+  // Re-place marker when sqft changes (resize footprint) — use refs to avoid stale closures
+  useEffect(() => {
+    sqftRef.current = sqft
     if (!houseMarkerRef.current || !mapboxgl) return
     const lnglat = houseMarkerRef.current.getLngLat()
-    placeHouseMarker([lnglat.lng, lnglat.lat], rotation, sqft)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!lnglat) return
+    if (houseMarkerRef.current) houseMarkerRef.current.remove()
+    const el = makeHouseEl(rotationRef.current, sqft)
+    const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'center' })
+      .setLngLat([lnglat.lng, lnglat.lat])
+      .addTo(mapRef.current)
+    marker.on('dragend', () => {
+      const p = marker.getLngLat()
+      setLotData(prev => ({ ...prev, lot_lng: p.lng, lot_lat: p.lat }))
+    })
+    houseMarkerRef.current = marker
   }, [sqft])
 
   const loadBoundary = useCallback(async (lat: number, lng: number) => {
@@ -186,6 +201,8 @@ export default function StepLot({ state, update, onNext }: Props) {
       setLotData(prev => ({ ...prev, lot_lng: p.lng, lot_lat: p.lat }))
     })
     houseMarkerRef.current = marker
+    sqftRef.current = sf
+    rotationRef.current = rot
   }, [])
 
   const initMap = useCallback(() => {
