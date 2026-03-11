@@ -17,28 +17,28 @@ const COMPASS_DIRS = ['N','NE','E','SE','S','SW','W','NW'] as const
 function rotationToCardinal(deg: number) { return COMPASS_DIRS[Math.round(((deg+180)%360)/45)%8] }
 function rotationToSide(deg: number, offset: number) { return COMPASS_DIRS[Math.round(((deg+offset)%360)/45)%8] }
 
-const MAP_STYLES: { id: string; label: string; url: string }[] = [
+const MAP_STYLES = [
   { id: 'satellite', label: '🛰 Satellite', url: 'mapbox://styles/mapbox/satellite-streets-v12' },
   { id: 'streets',   label: '🗺 Streets',   url: 'mapbox://styles/mapbox/streets-v12' },
   { id: 'outdoors',  label: '🌿 Outdoors',  url: 'mapbox://styles/mapbox/outdoors-v12' },
 ]
 
 const DRAW_TOOLS = [
-  { id: 'draw_polygon',   label: '⬡', title: 'Draw area / building' },
-  { id: 'draw_line',      label: '╱', title: 'Draw line / driveway / fence' },
-  { id: 'draw_point',     label: '●', title: 'Drop a pin' },
-  { id: 'simple_select',  label: '↖', title: 'Select / move' },
-  { id: 'delete',         label: '🗑', title: 'Delete selected' },
-  { id: 'clear',          label: '✕', title: 'Clear all drawings' },
+  { id: 'draw_polygon',  label: '⬡', title: 'Draw area / building' },
+  { id: 'draw_line',     label: '╱', title: 'Draw line / driveway / fence' },
+  { id: 'draw_point',    label: '●', title: 'Drop a pin' },
+  { id: 'simple_select', label: '↖', title: 'Select / move' },
+  { id: 'delete',        label: '🗑', title: 'Delete selected' },
+  { id: 'clear',         label: '✕', title: 'Clear all drawings' },
 ]
 
 const LOT_FLAGS = [
-  { id: 'sloped',  label: '⛰ Sloped' },
-  { id: 'corner',  label: '🔀 Corner lot' },
-  { id: 'wooded',  label: '🌳 Wooded' },
-  { id: 'creek',   label: '💧 Creek/pond' },
-  { id: 'hoa',     label: '🏘 HOA' },
-  { id: 'rural',   label: '🤠 Rural' },
+  { id: 'sloped', label: '⛰ Sloped' },
+  { id: 'corner', label: '🔀 Corner lot' },
+  { id: 'wooded', label: '🌳 Wooded' },
+  { id: 'creek',  label: '💧 Creek/pond' },
+  { id: 'hoa',    label: '🏘 HOA' },
+  { id: 'rural',  label: '🤠 Rural' },
 ]
 
 const DRIVEWAY_OPTIONS = [
@@ -56,40 +56,37 @@ const SQFT_PRESETS = [
   { label: '4,000+ SF', value: 4500 },
 ]
 
-// Convert sqft to pixel dimensions at zoom ~17 (1 px ≈ 0.6m at z17 satellite)
-// Assume 1.6:1 width:depth ratio, single story footprint ≈ sqft * 0.85 (subtract garage/porch)
-function sqftToPixels(sf: number, zoom: number, lat: number): { w: number; h: number } {
-  // Real-world dimensions assuming 1.6:1 ratio, 80% of sqft is footprint
-  const depthFt = Math.sqrt(sf * 0.8 / 1.6)
-  const widthFt = depthFt * 1.6
-  // Mapbox projection: meters per pixel at this zoom + lat
-  const metersPerPx = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom)
-  const feetPerPx = metersPerPx * 3.28084
+// Build a rotated GeoJSON rectangle centered at [lng, lat]
+// widthFt and depthFt are real-world feet, rotationDeg rotates the rectangle
+function buildFootprintGeoJSON(lng: number, lat: number, widthFt: number, depthFt: number, rotationDeg: number) {
+  // Convert feet to degrees (approximate, good enough at lot scale)
+  const ftPerDegLng = 364000 * Math.cos(lat * Math.PI / 180)
+  const ftPerDegLat = 364000
+  const hw = (widthFt / 2) / ftPerDegLng  // half-width in degrees
+  const hd = (depthFt / 2) / ftPerDegLat  // half-depth in degrees
+  const rad = rotationDeg * Math.PI / 180
+
+  // Corners relative to center (unrotated)
+  const corners = [
+    [-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd], [-hw, -hd]
+  ]
+  // Rotate each corner
+  const rotated = corners.map(([x, y]) => [
+    lng + x * Math.cos(rad) - y * Math.sin(rad),
+    lat + x * Math.sin(rad) + y * Math.cos(rad),
+  ])
   return {
-    w: Math.round(Math.max(20, widthFt / feetPerPx)),
-    h: Math.round(Math.max(14, depthFt / feetPerPx)),
+    type: 'Feature' as const,
+    geometry: { type: 'Polygon' as const, coordinates: [rotated] },
+    properties: {},
   }
 }
 
-function makeHouseEl(rot: number, sf: number, zoom: number, lat: number): HTMLElement {
-  const { w, h } = sqftToPixels(sf, zoom, lat)
-  const wrap = document.createElement('div')
-  wrap.style.cssText = `width:${w}px;height:${h}px;cursor:grab;`
-  wrap.innerHTML = `
-    <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"
-      style="transform:rotate(${rot}deg);transform-origin:center;display:block;
-      filter:drop-shadow(0 2px 8px rgba(0,0,0,0.7));overflow:visible">
-      <rect x="2" y="${h*0.26}" width="${w-4}" height="${h*0.71}" rx="3"
-        fill="#1e293b" stroke="#f59e0b" stroke-width="2.5" opacity="0.95"/>
-      <polygon points="${w/2},2 ${w-4},${h*0.3} 4,${h*0.3}"
-        fill="#f59e0b" opacity="0.95"/>
-      <rect x="${w/2-5}" y="${h*0.72}" width="10" height="${h*0.25}" fill="#f59e0b" rx="1"/>
-      <rect x="4" y="${h*0.55}" width="${w*0.33}" height="${h*0.4}"
-        fill="#334155" stroke="#64748b" stroke-width="1.5" rx="2"/>
-      <text x="${w/2}" y="${h-3}" text-anchor="middle" font-size="8"
-        fill="#f59e0b" font-weight="800" font-family="sans-serif">FRONT</text>
-    </svg>`
-  return wrap
+function sqftToDimensions(sf: number): { widthFt: number; depthFt: number } {
+  // Full footprint (single story), 1.7:1 width:depth
+  const depthFt = Math.sqrt(sf / 1.7)
+  const widthFt = depthFt * 1.7
+  return { widthFt, depthFt }
 }
 
 export default function StepLot({ state, update, onNext }: Props) {
@@ -97,9 +94,10 @@ export default function StepLot({ state, update, onNext }: Props) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const houseMarkerRef = useRef<any>(null)
+  const dragMarkerRef = useRef<any>(null)   // tiny drag handle marker
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const drawRef = useRef<any>(null)
+  const houseCenter = useRef<[number, number] | null>(null)
 
   const [query, setQuery] = useState(state.lot?.lot_address?.split(',')[0] ?? '')
   const [suggestions, setSuggestions] = useState<{ place_name: string; center: [number, number] }[]>([])
@@ -117,8 +115,9 @@ export default function StepLot({ state, update, onNext }: Props) {
   const [mapStyle, setMapStyle] = useState('satellite')
   const [activeTool, setActiveTool] = useState('simple_select')
   const [mbLoaded, setMbLoaded] = useState(false)
-  const suppressSearch = useRef(false)
   const [sqft, setSqft] = useState(state.sqft ?? 2500)
+
+  const suppressSearch = useRef(false)
   const sqftRef = useRef(state.sqft ?? 2500)
   const rotationRef = useRef(state.lot?.house_rotation_deg ?? 180)
 
@@ -135,40 +134,89 @@ export default function StepLot({ state, update, onNext }: Props) {
     })
   }, [])
 
-  const updateHouseEl = useCallback((deg: number) => {
-    if (!houseMarkerRef.current) return
-    const svg = houseMarkerRef.current.getElement()?.querySelector('svg')
-    if (svg) svg.style.transform = `rotate(${deg}deg)`
+  // Update the GeoJSON footprint layer (purely in map coords — always perfectly scaled)
+  const updateFootprint = useCallback(() => {
+    if (!mapRef.current || !houseCenter.current) return
+    const [lng, lat] = houseCenter.current
+    const { widthFt, depthFt } = sqftToDimensions(sqftRef.current)
+    const geojson = buildFootprintGeoJSON(lng, lat, widthFt, depthFt, rotationRef.current)
+    if (mapRef.current.getSource('house-footprint')) {
+      mapRef.current.getSource('house-footprint').setData(geojson)
+    }
   }, [])
 
+  // Sync refs and update footprint on rotation change
   useEffect(() => {
     rotationRef.current = rotation
-    updateHouseEl(rotation)
-  }, [rotation, updateHouseEl])
+    updateFootprint()
+  }, [rotation, updateFootprint])
 
-  // Rebuild marker at correct real-world scale
-  const rebuildMarker = useCallback(() => {
-    if (!houseMarkerRef.current || !mapRef.current || !mapboxgl) return
-    const lnglat = houseMarkerRef.current.getLngLat()
-    if (!lnglat) return
-    houseMarkerRef.current.remove()
-    const zoom = mapRef.current.getZoom()
-    const el = makeHouseEl(rotationRef.current, sqftRef.current, zoom, lnglat.lat)
-    const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'center' })
-      .setLngLat([lnglat.lng, lnglat.lat])
-      .addTo(mapRef.current)
-    marker.on('dragend', () => {
-      const p = marker.getLngLat()
-      setLotData(prev => ({ ...prev, lot_lng: p.lng, lot_lat: p.lat }))
-    })
-    houseMarkerRef.current = marker
-  }, [])
-
-  // Re-place marker when sqft changes
+  // Sync refs and update footprint on sqft change
   useEffect(() => {
     sqftRef.current = sqft
-    rebuildMarker()
-  }, [sqft, rebuildMarker])
+    updateFootprint()
+  }, [sqft, updateFootprint])
+
+  const placeDragHandle = useCallback((lnglat: [number, number]) => {
+    if (!mapRef.current || !mapboxgl) return
+    if (dragMarkerRef.current) dragMarkerRef.current.remove()
+
+    // Small crosshair drag handle
+    const el = document.createElement('div')
+    el.style.cssText = `width:28px;height:28px;cursor:move;display:flex;align-items:center;justify-content:center;
+      background:rgba(245,158,11,0.9);border:2px solid #fff;border-radius:50%;
+      box-shadow:0 2px 8px rgba(0,0,0,0.6);font-size:14px;`
+    el.textContent = '✛'
+
+    const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'center' })
+      .setLngLat(lnglat)
+      .addTo(mapRef.current)
+
+    marker.on('drag', () => {
+      const p = marker.getLngLat()
+      houseCenter.current = [p.lng, p.lat]
+      updateFootprint()
+    })
+    marker.on('dragend', () => {
+      const p = marker.getLngLat()
+      houseCenter.current = [p.lng, p.lat]
+      setLotData(prev => ({ ...prev, lot_lng: p.lng, lot_lat: p.lat }))
+      updateFootprint()
+    })
+    dragMarkerRef.current = marker
+  }, [updateFootprint])
+
+  const addFootprintLayers = useCallback((map: unknown, initialGeoJSON: object) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const m = map as any
+    if (m.getSource('house-footprint')) return
+    m.addSource('house-footprint', { type: 'geojson', data: initialGeoJSON })
+    m.addLayer({ id: 'house-fill', type: 'fill', source: 'house-footprint',
+      paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.25 } })
+    m.addLayer({ id: 'house-outline', type: 'line', source: 'house-footprint',
+      paint: { 'line-color': '#f59e0b', 'line-width': 2.5 } })
+    // Front face indicator (slightly darker line on south face)
+    m.addLayer({ id: 'house-label', type: 'symbol', source: 'house-footprint',
+      layout: { 'text-field': '🏠 FRONT', 'text-size': 11, 'text-anchor': 'center' },
+      paint: { 'text-color': '#f59e0b', 'text-halo-color': '#000', 'text-halo-width': 1.5 } })
+  }, [])
+
+  const placeHouseOnMap = useCallback((lnglat: [number, number]) => {
+    if (!mapRef.current) return
+    houseCenter.current = lnglat
+    const { widthFt, depthFt } = sqftToDimensions(sqftRef.current)
+    const geojson = buildFootprintGeoJSON(lnglat[0], lnglat[1], widthFt, depthFt, rotationRef.current)
+
+    if (mapRef.current.isStyleLoaded()) {
+      addFootprintLayers(mapRef.current, geojson)
+      mapRef.current.getSource('house-footprint')?.setData(geojson)
+    } else {
+      mapRef.current.once('style.load', () => {
+        addFootprintLayers(mapRef.current, geojson)
+      })
+    }
+    placeDragHandle(lnglat)
+  }, [addFootprintLayers, placeDragHandle])
 
   const loadBoundary = useCallback(async (lat: number, lng: number) => {
     try {
@@ -176,15 +224,19 @@ export default function StepLot({ state, update, onNext }: Props) {
       const data = await r.json()
       if (!data.boundary || !mapRef.current) return
       const m = mapRef.current
-      if (m.getSource('lot-boundary')) {
-        m.getSource('lot-boundary').setData(data.boundary)
-      } else {
-        m.addSource('lot-boundary', { type: 'geojson', data: data.boundary })
-        m.addLayer({ id: 'lot-fill', type: 'fill', source: 'lot-boundary',
-          paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.1 } })
-        m.addLayer({ id: 'lot-line', type: 'line', source: 'lot-boundary',
-          paint: { 'line-color': '#f59e0b', 'line-width': 2.5, 'line-dasharray': [3,2] } })
+      const add = () => {
+        if (m.getSource('lot-boundary')) {
+          m.getSource('lot-boundary').setData(data.boundary)
+        } else {
+          m.addSource('lot-boundary', { type: 'geojson', data: data.boundary })
+          m.addLayer({ id: 'lot-fill', type: 'fill', source: 'lot-boundary',
+            paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.08 } })
+          m.addLayer({ id: 'lot-line', type: 'line', source: 'lot-boundary',
+            paint: { 'line-color': '#f59e0b', 'line-width': 2.5, 'line-dasharray': [3,2] } })
+        }
       }
+      if (m.isStyleLoaded()) add()
+      else m.once('style.load', add)
       setBoundarySource(data.source)
       if (data.lotSize) setLotSizeDisplay(`${parseFloat(data.lotSize).toFixed(2)} ac`)
       setLotData(prev => ({
@@ -194,24 +246,6 @@ export default function StepLot({ state, update, onNext }: Props) {
         lot_parcel_id: data.parcelId ?? prev.lot_parcel_id,
       }))
     } catch {}
-  }, [])
-
-  const placeHouseMarker = useCallback((lnglat: [number, number], rot: number, sf: number) => {
-    if (!mapRef.current || !mapboxgl) return
-    if (houseMarkerRef.current) houseMarkerRef.current.remove()
-    const zoom = mapRef.current.getZoom()
-    const lat = lnglat[1]
-    const el = makeHouseEl(rot, sf, zoom, lat)
-    const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'center' })
-      .setLngLat(lnglat)
-      .addTo(mapRef.current)
-    marker.on('dragend', () => {
-      const p = marker.getLngLat()
-      setLotData(prev => ({ ...prev, lot_lng: p.lng, lot_lat: p.lat }))
-    })
-    houseMarkerRef.current = marker
-    sqftRef.current = sf
-    rotationRef.current = rot
   }, [])
 
   const initMap = useCallback(() => {
@@ -228,69 +262,57 @@ export default function StepLot({ state, update, onNext }: Props) {
       zoom: lotData.lot_lat ? 17 : 9,
     })
 
-    // Controls
     map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right')
     map.addControl(new mapboxgl.FullscreenControl(), 'top-right')
     map.addControl(new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'imperial' }), 'bottom-right')
 
-    // Draw tools
     const draw = new MapboxDraw({
       displayControlsDefault: false,
       controls: {},
       styles: [
-        { id: 'gl-draw-polygon-fill', type: 'fill', filter: ['all',['==','$type','Polygon'],['!=','mode','static']],
-          paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.15 } },
-        { id: 'gl-draw-polygon-stroke', type: 'line', filter: ['all',['==','$type','Polygon'],['!=','mode','static']],
-          paint: { 'line-color': '#f59e0b', 'line-width': 2 } },
-        { id: 'gl-draw-line', type: 'line', filter: ['all',['==','$type','LineString'],['!=','mode','static']],
-          paint: { 'line-color': '#60a5fa', 'line-width': 2.5, 'line-dasharray': [2,1] } },
-        { id: 'gl-draw-point', type: 'circle', filter: ['all',['==','$type','Point'],['!=','mode','static']],
-          paint: { 'circle-radius': 5, 'circle-color': '#f59e0b' } },
-        { id: 'gl-draw-polygon-fill-static', type: 'fill', filter: ['all',['==','$type','Polygon'],['==','mode','static']],
-          paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.1 } },
-        { id: 'gl-draw-polygon-stroke-static', type: 'line', filter: ['all',['==','$type','Polygon'],['==','mode','static']],
-          paint: { 'line-color': '#f59e0b', 'line-width': 2 } },
-        { id: 'gl-draw-line-static', type: 'line', filter: ['all',['==','$type','LineString'],['==','mode','static']],
+        { id: 'gl-draw-polygon-fill', type: 'fill',
+          filter: ['all',['==','$type','Polygon'],['!=','mode','static']],
+          paint: { 'fill-color': '#60a5fa', 'fill-opacity': 0.15 } },
+        { id: 'gl-draw-polygon-stroke', type: 'line',
+          filter: ['all',['==','$type','Polygon'],['!=','mode','static']],
           paint: { 'line-color': '#60a5fa', 'line-width': 2 } },
+        { id: 'gl-draw-line', type: 'line',
+          filter: ['all',['==','$type','LineString'],['!=','mode','static']],
+          paint: { 'line-color': '#60a5fa', 'line-width': 2.5, 'line-dasharray': [2,1] } },
+        { id: 'gl-draw-point', type: 'circle',
+          filter: ['all',['==','$type','Point'],['!=','mode','static']],
+          paint: { 'circle-radius': 5, 'circle-color': '#60a5fa' } },
       ],
     })
     map.addControl(draw)
     drawRef.current = draw
+    mapRef.current = map
 
     map.on('load', () => {
       if (lotData.lot_lat && lotData.lot_lng) {
         loadBoundary(lotData.lot_lat, lotData.lot_lng)
-        placeHouseMarker([lotData.lot_lng, lotData.lot_lat], rotation, sqft)
+        placeHouseOnMap([lotData.lot_lng, lotData.lot_lat])
       }
     })
+  }, [lotData.lot_lat, lotData.lot_lng, loadBoundary, placeHouseOnMap])
 
-    // Resize house marker on zoom so it stays true to real-world scale
-    map.on('zoom', () => { rebuildMarker() })
-
-    mapRef.current = map
-  }, [lotData.lot_lat, lotData.lot_lng, loadBoundary, placeHouseMarker, rebuildMarker, rotation])
-
-  // Init when mapbox loads and showMap becomes true
   useEffect(() => {
-    if (!showMap || !mbLoaded) return
-    if (mapRef.current) return
+    if (!showMap || !mbLoaded || mapRef.current) return
     const t = setTimeout(initMap, 50)
     return () => clearTimeout(t)
   }, [showMap, mbLoaded, initMap])
 
-  // Style switcher
   const switchStyle = useCallback((styleId: string) => {
     const style = MAP_STYLES.find(s => s.id === styleId)
     if (!style || !mapRef.current) return
     setMapStyle(styleId)
     mapRef.current.setStyle(style.url)
-    // Re-add boundary after style load
     mapRef.current.once('style.load', () => {
       if (lotData.lot_lat && lotData.lot_lng) loadBoundary(lotData.lot_lat, lotData.lot_lng)
+      if (houseCenter.current) placeHouseOnMap(houseCenter.current)
     })
-  }, [lotData.lot_lat, lotData.lot_lng, loadBoundary])
+  }, [lotData.lot_lat, lotData.lot_lng, loadBoundary, placeHouseOnMap])
 
-  // Draw tool handler
   const handleDrawTool = useCallback((toolId: string) => {
     if (!drawRef.current) return
     setActiveTool(toolId)
@@ -315,7 +337,7 @@ export default function StepLot({ state, update, onNext }: Props) {
       mapRef.current.flyTo({ center: [lng, lat], zoom: 17, essential: true })
       mapRef.current.once('moveend', () => {
         loadBoundary(lat, lng)
-        placeHouseMarker([lng, lat], rotation, sqft)
+        placeHouseOnMap([lng, lat])
       })
       setSubstep('orient')
       return true
@@ -323,7 +345,7 @@ export default function StepLot({ state, update, onNext }: Props) {
     if (!tryPlace()) {
       const t = setInterval(() => { if (tryPlace()) clearInterval(t) }, 150)
     }
-  }, [rotation, loadBoundary, placeHouseMarker])
+  }, [loadBoundary, placeHouseOnMap])
 
   const searchAddress = useCallback(async (q: string) => {
     if (suppressSearch.current) { suppressSearch.current = false; return }
@@ -357,6 +379,8 @@ export default function StepLot({ state, update, onNext }: Props) {
     onNext()
   }
 
+  const { widthFt, depthFt } = sqftToDimensions(sqft)
+
   return (
     <div className="space-y-4">
       <div>
@@ -364,7 +388,6 @@ export default function StepLot({ state, update, onNext }: Props) {
         <p className="text-stone-400 text-sm">Place your home on the actual property to orient the design.</p>
       </div>
 
-      {/* Step progress */}
       <div className="flex gap-1.5">
         {(['address','orient','driveway','flags'] as const).map((s,i) => (
           <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${
@@ -374,7 +397,7 @@ export default function StepLot({ state, update, onNext }: Props) {
         ))}
       </div>
 
-      {/* Address search */}
+      {/* Address */}
       <div className="relative">
         <input type="text" value={query} onChange={e => setQuery(e.target.value)}
           placeholder="Enter property address..."
@@ -391,11 +414,10 @@ export default function StepLot({ state, update, onNext }: Props) {
         )}
       </div>
 
-      {/* Building envelope size */}
+      {/* Sqft size picker */}
       <div>
         <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">
           Approximate home size
-          <span className="normal-case text-stone-500 ml-1">— scales the footprint on the map</span>
         </label>
         <div className="grid grid-cols-3 gap-2">
           {SQFT_PRESETS.map(p => (
@@ -408,13 +430,13 @@ export default function StepLot({ state, update, onNext }: Props) {
           ))}
         </div>
         <p className="text-xs text-stone-600 mt-1.5">
-          ~{Math.round(Math.sqrt(sqft * 0.8 * 1.6))}ft × {Math.round(Math.sqrt(sqft * 0.8 / 1.6))}ft footprint · scales true-to-size on map
+          ~{Math.round(widthFt)}ft wide × {Math.round(depthFt)}ft deep · footprint drawn true-to-scale on map
         </p>
       </div>
 
       {showMap && (
         <div className="space-y-3">
-          {/* Map style + lot info bar */}
+          {/* Style bar */}
           <div className="flex items-center gap-2 flex-wrap">
             {MAP_STYLES.map(s => (
               <button key={s.id} onClick={() => switchStyle(s.id)}
@@ -422,9 +444,7 @@ export default function StepLot({ state, update, onNext }: Props) {
                   mapStyle === s.id ? 'border-amber-500 bg-amber-500/10 text-amber-400' : 'border-stone-700 text-stone-400 hover:border-stone-500'
                 }`}>{s.label}</button>
             ))}
-            {lotSizeDisplay && (
-              <span className="ml-auto text-xs text-stone-400">📐 {lotSizeDisplay}</span>
-            )}
+            {lotSizeDisplay && <span className="ml-auto text-xs text-stone-400">📐 {lotSizeDisplay}</span>}
             {boundarySource && (
               <span className={`text-xs ${boundarySource==='ReportAll'?'text-green-400':boundarySource==='OpenStreetMap'?'text-amber-400':'text-stone-500'}`}>
                 {boundarySource==='ReportAll'?'✓ Real parcel':boundarySource==='OpenStreetMap'?'~ OSM boundary':'~ Estimated'}
@@ -436,7 +456,7 @@ export default function StepLot({ state, update, onNext }: Props) {
           <div className="relative rounded-xl overflow-hidden border border-stone-700" style={{height:420}}>
             <div ref={mapContainer} className="w-full h-full"/>
 
-            {/* Drawing toolbar */}
+            {/* Draw toolbar */}
             <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
               {DRAW_TOOLS.map(t => (
                 <button key={t.id} title={t.title} onClick={() => handleDrawTool(t.id)}
@@ -449,8 +469,8 @@ export default function StepLot({ state, update, onNext }: Props) {
             </div>
 
             {substep === 'orient' && (
-              <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2.5 py-1.5 rounded-lg">
-                Drag 🏠 to position on lot
+              <div className="absolute bottom-10 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2.5 py-1.5 rounded-lg">
+                Drag ✛ to position · rotate below
               </div>
             )}
           </div>
@@ -496,7 +516,7 @@ export default function StepLot({ state, update, onNext }: Props) {
 
               {substep === 'orient' && (
                 <button onClick={() => setSubstep('driveway')}
-                  className="w-full py-2.5 bg-stone-700 hover:bg-stone-600 text-white rounded-lg text-sm font-medium transition-colors">
+                  className="w-full py-2.5 bg-stone-700 hover:bg-stone-600 text-white rounded-lg text-sm font-medium">
                   Set driveway direction →
                 </button>
               )}
@@ -524,7 +544,7 @@ export default function StepLot({ state, update, onNext }: Props) {
       {substep === 'flags' && (
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">Lot characteristics <span className="normal-case text-stone-600">(optional)</span></label>
+            <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">Lot characteristics <span className="normal-case text-stone-500">(optional)</span></label>
             <div className="flex flex-wrap gap-2">
               {LOT_FLAGS.map(f => (
                 <button key={f.id}
@@ -536,7 +556,7 @@ export default function StepLot({ state, update, onNext }: Props) {
             </div>
           </div>
           <textarea value={notes} onChange={e => setNotes(e.target.value)}
-            placeholder="Views, easements, septic, access road, neighbors..."
+            placeholder="Views, easements, septic, access road..."
             rows={2}
             className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-white placeholder-stone-500 text-sm focus:outline-none focus:border-amber-500 resize-none"/>
         </div>
