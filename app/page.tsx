@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DesignState } from '@/lib/design-types'
 import BubbleDiagram from '@/components/BubbleDiagram'
+import StepLot from '@/components/design-flow/StepLot'
 import StepStyle from '@/components/design-flow/StepStyle'
 import StepSize from '@/components/design-flow/StepSize'
 import StepShape from '@/components/design-flow/StepShape'
@@ -13,9 +14,9 @@ import StepMasterSuite from '@/components/design-flow/StepMasterSuite'
 import StepLifestyle from '@/components/design-flow/StepLifestyle'
 import StepContact from '@/components/design-flow/StepContact'
 
-const TOTAL_STEPS = 10
+const TOTAL_STEPS = 11
 
-const STEP_LABELS = ['Style', 'Size', 'Shape', 'Priorities', 'Garage', 'Features', 'Master Suite', 'Lifestyle', 'Architecture', 'Contact']
+const STEP_LABELS = ['Lot', 'Style', 'Size', 'Shape', 'Priorities', 'Garage', 'Features', 'Master Suite', 'Lifestyle', 'Architecture', 'Contact']
 
 const DEFAULT_PRIORITIES = ['master_privacy', 'open_living', 'outdoor_connection', 'garage_access', 'home_office'] as const
 const initialState: DesignState = { step: 1, priorities: [...DEFAULT_PRIORITIES] as import('@/lib/design-types').Priority[] }
@@ -175,18 +176,19 @@ export default function DesignFlow() {
         {/* Left: Questions — hidden on mobile, always visible on desktop */}
         <div className="hidden lg:flex flex-1 lg:max-w-[55%] px-6 py-8 flex-col">
           <div className="flex-1">
-            {state.step === 1 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
-            {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} fullBaths={state.fullBaths} halfBaths={state.halfBaths} bathConfig={state.bathConfig} stories={state.stories} onChange={patch => update(patch)} />}
-            {state.step === 3 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
-            {state.step === 4 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
-            {state.step === 5 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} garageOrientation={state.garageOrientation} onChange={patch => update(patch)} />}
-            {state.step === 6 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
-            {state.step === 7 && <StepMasterSuite value={state.masterSuite || {}} onChange={v => update({ masterSuite: v })} />}
-            {state.step === 8 && <StepLifestyle value={state.lifestyle || {}} onChange={v => update({ lifestyle: v })} />}
-            {state.step === 9 && <StepArchitecture value={state.architecture || {}} shape={state.shape} onChange={v => update({ architecture: v })} />}
-            {state.step === 10 && <StepContact onSubmit={handleSubmit} saving={saving} />}
+            {state.step === 1 && <StepLot state={state} update={update} onNext={next} />}
+            {state.step === 2 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
+            {state.step === 3 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} fullBaths={state.fullBaths} halfBaths={state.halfBaths} bathConfig={state.bathConfig} stories={state.stories} onChange={patch => update(patch)} />}
+            {state.step === 4 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
+            {state.step === 5 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
+            {state.step === 6 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} garageOrientation={state.garageOrientation} onChange={patch => update(patch)} />}
+            {state.step === 7 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
+            {state.step === 8 && <StepMasterSuite value={state.masterSuite || {}} onChange={v => update({ masterSuite: v })} />}
+            {state.step === 9 && <StepLifestyle value={state.lifestyle || {}} onChange={v => update({ lifestyle: v })} />}
+            {state.step === 10 && <StepArchitecture value={state.architecture || {}} shape={state.shape} onChange={v => update({ architecture: v })} />}
+            {state.step === 11 && <StepContact onSubmit={handleSubmit} saving={saving} />}
           </div>
-          {state.step < 10 && (
+          {state.step < 11 && (
             <div className="flex gap-3 mt-8">
               {state.step > 1 && (
                 <button onClick={back} className="px-6 py-3 border border-white/20 text-white rounded hover:bg-white/10 transition text-sm">← Back</button>
@@ -299,18 +301,19 @@ export default function DesignFlow() {
               <button onClick={() => setSheetOpen(false)} className="text-gray-400 text-xl leading-none">✕</button>
             </div>
             <div className="px-5 py-6">
-              {state.step === 1 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
-              {state.step === 2 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} fullBaths={state.fullBaths} halfBaths={state.halfBaths} bathConfig={state.bathConfig} stories={state.stories} onChange={patch => update(patch)} />}
-              {state.step === 3 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
-              {state.step === 4 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
-              {state.step === 5 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} garageOrientation={state.garageOrientation} onChange={patch => update(patch)} />}
-              {state.step === 6 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
-            {state.step === 7 && <StepMasterSuite value={state.masterSuite || {}} onChange={v => update({ masterSuite: v })} />}
+              {state.step === 1 && <StepLot state={state} update={update} onNext={next} />}
+              {state.step === 2 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
+              {state.step === 3 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} fullBaths={state.fullBaths} halfBaths={state.fullBaths} bathConfig={state.bathConfig} stories={state.stories} onChange={patch => update(patch)} />}
+              {state.step === 4 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
+              {state.step === 5 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
+              {state.step === 6 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} garageOrientation={state.garageOrientation} onChange={patch => update(patch)} />}
+              {state.step === 7 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
+              {state.step === 8 && <StepMasterSuite value={state.masterSuite || {}} onChange={v => update({ masterSuite: v })} />}
               {state.step === 8 && <StepLifestyle value={state.lifestyle || {}} onChange={v => update({ lifestyle: v })} />}
               {state.step === 9 && <StepArchitecture value={state.architecture || {}} shape={state.shape} onChange={v => update({ architecture: v })} />}
               {state.step === 10 && <StepContact onSubmit={handleSubmit} saving={saving} />}
             </div>
-            {state.step < 10 && (
+            {state.step < 11 && (
               <div className="sticky bottom-0 bg-[#1A1A1A] border-t border-white/10 px-5 py-4 flex gap-3">
                 {state.step > 1 && (
                   <button onClick={() => { back(); setSheetOpen(false) }}

@@ -45,6 +45,21 @@ export interface Features {
   outdoor_kitchen: boolean
 }
 
+export interface LotData {
+  lot_address?: string
+  lot_lat?: number
+  lot_lng?: number
+  lot_size_acres?: number
+  lot_parcel_id?: string
+  lot_boundary_geojson?: object
+  house_rotation_deg?: number
+  street_facing?: string
+  garage_facing?: string
+  driveway_approach?: string
+  lot_flags?: string[]
+  lot_notes?: string
+}
+
 export interface Architecture {
   wall_height?: 'standard' | 'tall' | 'dramatic'
   zone_heights?: Record<string, number>
@@ -74,6 +89,7 @@ export interface DesignState {
   masterSuite?: Partial<MasterSuite>
   lifestyle?: Partial<Lifestyle>
   architecture?: Architecture
+  lot?: Partial<LotData>
   firstName?: string
   lastName?: string
   email?: string

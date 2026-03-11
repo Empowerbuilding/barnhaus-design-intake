@@ -66,6 +66,20 @@ export async function POST(req: NextRequest) {
     bubble_positions: formData.bubblePositions || {},
     bubble_data: formData.bubbles || [],
 
+    // Step 1 - Lot / Site context
+    lot_address: formData.lot?.lot_address || null,
+    lot_lat: formData.lot?.lot_lat || null,
+    lot_lng: formData.lot?.lot_lng || null,
+    lot_size_acres: formData.lot?.lot_size_acres || null,
+    lot_parcel_id: formData.lot?.lot_parcel_id || null,
+    lot_boundary_geojson: formData.lot?.lot_boundary_geojson || null,
+    house_rotation_deg: formData.lot?.house_rotation_deg ?? null,
+    street_facing: formData.lot?.street_facing || null,
+    garage_facing: formData.lot?.garage_facing || null,
+    driveway_approach: formData.lot?.driveway_approach || null,
+    lot_flags: formData.lot?.lot_flags || null,
+    lot_notes: formData.lot?.lot_notes || null,
+
     status: 'new',
     submitted_at: new Date().toISOString(),
   }
