@@ -47,8 +47,31 @@ const DRIVEWAY_OPTIONS = [
   { id: 'right_turn',  label: '→ Right turn in' },
 ]
 
-function makeHouseEl(rot: number): HTMLElement {
-  const w = 72, h = 54
+const SQFT_PRESETS = [
+  { label: '1,500 SF', value: 1500 },
+  { label: '2,000 SF', value: 2000 },
+  { label: '2,500 SF', value: 2500 },
+  { label: '3,000 SF', value: 3000 },
+  { label: '3,500 SF', value: 3500 },
+  { label: '4,000+ SF', value: 4500 },
+]
+
+// Convert sqft to pixel dimensions at zoom ~17 (1 px ≈ 0.6m at z17 satellite)
+// Assume 1.6:1 width:depth ratio, single story footprint ≈ sqft * 0.85 (subtract garage/porch)
+function sqftToPixels(sf: number): { w: number; h: number } {
+  const footprintSqft = sf * 0.8
+  const depthFt = Math.sqrt(footprintSqft / 1.6)
+  const widthFt = depthFt * 1.6
+  // At zoom 17, ~1px = 0.6m = ~2ft → scale factor
+  const scale = 0.48
+  return {
+    w: Math.round(Math.max(50, Math.min(160, widthFt * scale))),
+    h: Math.round(Math.max(38, Math.min(120, depthFt * scale))),
+  }
+}
+
+function makeHouseEl(rot: number, sf: number): HTMLElement {
+  const { w, h } = sqftToPixels(sf)
   const wrap = document.createElement('div')
   wrap.style.cssText = `width:${w}px;height:${h}px;cursor:grab;`
   wrap.innerHTML = `
@@ -94,6 +117,7 @@ export default function StepLot({ state, update, onNext }: Props) {
   const [activeTool, setActiveTool] = useState('simple_select')
   const [mbLoaded, setMbLoaded] = useState(false)
   const suppressSearch = useRef(false)
+  const [sqft, setSqft] = useState(state.sqft ?? 2500)
 
   // Load mapbox + draw dynamically
   useEffect(() => {
@@ -115,6 +139,14 @@ export default function StepLot({ state, update, onNext }: Props) {
   }, [])
 
   useEffect(() => { updateHouseEl(rotation) }, [rotation, updateHouseEl])
+
+  // Re-place marker when sqft changes (resize footprint)
+  useEffect(() => {
+    if (!houseMarkerRef.current || !mapboxgl) return
+    const lnglat = houseMarkerRef.current.getLngLat()
+    placeHouseMarker([lnglat.lng, lnglat.lat], rotation, sqft)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sqft])
 
   const loadBoundary = useCallback(async (lat: number, lng: number) => {
     try {
@@ -142,10 +174,10 @@ export default function StepLot({ state, update, onNext }: Props) {
     } catch {}
   }, [])
 
-  const placeHouseMarker = useCallback((lnglat: [number, number], rot: number) => {
+  const placeHouseMarker = useCallback((lnglat: [number, number], rot: number, sf: number) => {
     if (!mapRef.current || !mapboxgl) return
     if (houseMarkerRef.current) houseMarkerRef.current.remove()
-    const el = makeHouseEl(rot)
+    const el = makeHouseEl(rot, sf)
     const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'center' })
       .setLngLat(lnglat)
       .addTo(mapRef.current)
@@ -202,7 +234,7 @@ export default function StepLot({ state, update, onNext }: Props) {
     map.on('load', () => {
       if (lotData.lot_lat && lotData.lot_lng) {
         loadBoundary(lotData.lot_lat, lotData.lot_lng)
-        placeHouseMarker([lotData.lot_lng, lotData.lot_lat], rotation)
+        placeHouseMarker([lotData.lot_lng, lotData.lot_lat], rotation, sqft)
       }
     })
 
@@ -254,7 +286,7 @@ export default function StepLot({ state, update, onNext }: Props) {
       mapRef.current.flyTo({ center: [lng, lat], zoom: 17, essential: true })
       mapRef.current.once('moveend', () => {
         loadBoundary(lat, lng)
-        placeHouseMarker([lng, lat], rotation)
+        placeHouseMarker([lng, lat], rotation, sqft)
       })
       setSubstep('orient')
       return true
@@ -281,15 +313,18 @@ export default function StepLot({ state, update, onNext }: Props) {
   const canProceed = !!lotData.lot_address && !!driveway
 
   const handleNext = () => {
-    update({ lot: {
-      ...lotData,
-      house_rotation_deg: rotation,
-      street_facing: rotationToCardinal(rotation),
-      garage_facing: rotationToSide(rotation, 270),
-      driveway_approach: driveway,
-      lot_flags: flags,
-      lot_notes: notes,
-    } as LotData })
+    update({
+      sqft,
+      lot: {
+        ...lotData,
+        house_rotation_deg: rotation,
+        street_facing: rotationToCardinal(rotation),
+        garage_facing: rotationToSide(rotation, 270),
+        driveway_approach: driveway,
+        lot_flags: flags,
+        lot_notes: notes,
+      } as LotData,
+    })
     onNext()
   }
 
@@ -325,6 +360,27 @@ export default function StepLot({ state, update, onNext }: Props) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Building envelope size */}
+      <div>
+        <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">
+          Approximate home size
+          <span className="normal-case text-stone-500 ml-1">— scales the footprint on the map</span>
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          {SQFT_PRESETS.map(p => (
+            <button key={p.value} onClick={() => setSqft(p.value)}
+              className={`py-2 rounded-xl border text-sm font-medium transition-all ${
+                sqft === p.value
+                  ? 'border-amber-500 bg-amber-500/10 text-amber-400'
+                  : 'border-stone-700 bg-stone-800 text-stone-300 hover:border-stone-500'
+              }`}>{p.label}</button>
+          ))}
+        </div>
+        <p className="text-xs text-stone-600 mt-1.5">
+          Footprint ~{sqftToPixels(sqft).w * 2}ft wide × {sqftToPixels(sqft).h * 2}ft deep
+        </p>
       </div>
 
       {showMap && (
