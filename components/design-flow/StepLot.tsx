@@ -93,6 +93,7 @@ export default function StepLot({ state, update, onNext }: Props) {
   const [mapStyle, setMapStyle] = useState('satellite')
   const [activeTool, setActiveTool] = useState('simple_select')
   const [mbLoaded, setMbLoaded] = useState(false)
+  const suppressSearch = useRef(false)
 
   // Load mapbox + draw dynamically
   useEffect(() => {
@@ -242,6 +243,7 @@ export default function StepLot({ state, update, onNext }: Props) {
 
   const handleAddressSelect = useCallback(async (place: { place_name: string; center: [number,number] }) => {
     const [lng, lat] = place.center
+    suppressSearch.current = true
     setQuery(place.place_name.split(',').slice(0,2).join(','))
     setSuggestions([])
     setLotData(prev => ({ ...prev, lot_address: place.place_name, lot_lat: lat, lot_lng: lng }))
@@ -263,6 +265,7 @@ export default function StepLot({ state, update, onNext }: Props) {
   }, [rotation, loadBoundary, placeHouseMarker])
 
   const searchAddress = useCallback(async (q: string) => {
+    if (suppressSearch.current) { suppressSearch.current = false; return }
     if (q.length < 3) { setSuggestions([]); return }
     const r = await fetch(`/api/lot/geocode?address=${encodeURIComponent(q)}`)
     const data = await r.json()
