@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@mapbox/mapbox-gl-draw": "^1.5.1",
     "@radix-ui/react-radio-group": "^1.2.1",
     "@supabase/supabase-js": "^2.39.0",
     "@types/mapbox-gl": "^3.4.1",
