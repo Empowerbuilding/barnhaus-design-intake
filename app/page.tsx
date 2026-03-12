@@ -109,16 +109,16 @@ export default function DesignFlow() {
 
   const canNext = (): boolean => {
     switch (state.step) {
-      case 1: return !!state.style
-      case 2: return !!state.sqft && !!state.bedrooms && !!state.bathrooms
-      case 3: return !!state.shape
-      case 4: return !!(state.priorities && state.priorities.length === 5)
-      case 5: return !!state.garageCount
-      case 6: return true
-      case 7: return true
-      case 8: return true
-      case 9: return true
-      case 10: return true
+      case 1: return true                                                        // StepLot
+      case 2: return !!state.style                                               // StepStyle
+      case 3: return !!state.sqft && !!state.bedrooms && !!state.bathrooms       // StepSize
+      case 4: return !!state.shape                                               // StepShape
+      case 5: return !!(state.priorities && state.priorities.length === 5)       // StepPriorities
+      case 6: return !!state.garageCount                                         // StepGarage
+      case 7: return true                                                        // StepFeatures
+      case 8: return true                                                        // StepMasterSuite
+      case 9: return true                                                        // StepLifestyle
+      case 10: return true                                                       // StepArchitecture
       default: return false
     }
   }
