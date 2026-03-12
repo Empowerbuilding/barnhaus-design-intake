@@ -119,6 +119,7 @@ export default function DesignFlow() {
       case 8: return true                                                        // StepMasterSuite
       case 9: return true                                                        // StepLifestyle
       case 10: return true                                                       // StepArchitecture
+      case 11: return true                                                       // Room Layout (bubble diagram)
       default: return false
     }
   }
@@ -188,7 +189,7 @@ export default function DesignFlow() {
             {state.step === 9 && <StepLifestyle value={state.lifestyle || {}} onChange={v => update({ lifestyle: v })} />}
             {state.step === 10 && <StepArchitecture value={state.architecture || {}} shape={state.shape} onChange={v => update({ architecture: v })} />}
             {state.step === 11 && (
-              <div className="w-full">
+              <div className="w-full lg:hidden">
                 <h2 className="text-2xl font-bold text-white mb-1">Room Layout</h2>
                 <p className="text-stone-400 text-sm mb-4">Drag the bubbles to arrange how your rooms relate to each other. When you're happy, generate a zone map.</p>
                 <div className="relative w-full" style={{height: 500}}>
