@@ -2,8 +2,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { DesignState } from '@/lib/design-types'
 
-const VP_W = 500
-const VP_H = 360
+const VP_W = 600
+const VP_H = 420
 
 interface Bubble {
   id: string
@@ -39,12 +39,12 @@ function buildBubbles(state: DesignState): Bubble[] {
   const porch = state.porchSelection || 'none'
 
   const list: Bubble[] = [
-    { id: 'great_room', label: 'Great Room', r: 52, type: 'living', x: 250, y: 170 },
-    { id: 'kitchen', label: 'Kitchen', r: 42, type: 'kitchen', x: 130, y: 190 },
-    { id: 'dining', label: 'Dining', r: 34, type: 'kitchen', x: 130, y: 300 },
-    { id: 'master_bed', label: 'Master Bed', r: 48, type: 'master', x: 400, y: 100 },
-    { id: 'master_bath', label: 'Master Bath', r: 30, type: 'bath', x: 450, y: 200 },
-    { id: 'wic', label: 'W.I.C.', r: 24, type: 'service', x: 430, y: 290 },
+    { id: 'great_room', label: 'Great Room', r: 52, type: 'living', x: 300, y: 200 },
+    { id: 'kitchen', label: 'Kitchen', r: 42, type: 'kitchen', x: 150, y: 200 },
+    { id: 'dining', label: 'Dining', r: 34, type: 'kitchen', x: 150, y: 320 },
+    { id: 'master_bed', label: 'Master Bed', r: 48, type: 'master', x: 480, y: 120 },
+    { id: 'master_bath', label: 'Master Bath', r: 30, type: 'bath', x: 540, y: 220 },
+    { id: 'wic', label: 'W.I.C.', r: 24, type: 'service', x: 520, y: 310 },
   ]
 
   // Laundry and utility from desired rooms
@@ -73,15 +73,17 @@ function buildBubbles(state: DesignState): Bubble[] {
   // Garage
   if (garage !== 'none') {
     const label = garage === '3-car' ? '3-Car Garage' : garage === '2-car' ? '2-Car Garage' : 'Garage'
-    list.push({ id: 'garage', label, r: 46, type: 'garage', x: 80, y: 170 })
+    list.push({ id: 'garage', label, r: 46, type: 'garage', x: 80, y: 200 })
   }
 
   // Porches
+  const porchSF = state.porchSF || 400
+  const pr = porchSF <= 200 ? 22 : porchSF <= 400 ? 30 : porchSF <= 700 ? 40 : 52
   if (porch === 'front' || porch === 'both') {
-    list.push({ id: 'front_porch', label: 'Front Porch', r: 30, type: 'porch', x: 240, y: 320 })
+    list.push({ id: 'front_porch', label: 'Front Porch', r: pr, type: 'porch', x: 280, y: 390 })
   }
   if (porch === 'back' || porch === 'both') {
-    list.push({ id: 'back_porch', label: 'Back Porch', r: 28, type: 'porch', x: 340, y: 320 })
+    list.push({ id: 'back_porch', label: 'Back Porch', r: pr, type: 'porch', x: 380, y: 390 })
   }
 
   // Other desired rooms

@@ -13,6 +13,7 @@ export type BathConfig = 'ensuite_each' | 'shared_hall' | 'jack_and_jill' | 'mix
 export type RoofStyle = 'gable' | 'shed' | 'mono_pitch' | 'hip'
 export type RoofPitch = '2:12' | '4:12' | '6:12'
 export type PorchSelection = 'front' | 'back' | 'both' | 'none'
+export type PorchSize = 'small' | 'medium' | 'large' | 'extra-large'
 
 export interface MasterSuite {
   location?: MasterLocation
@@ -102,6 +103,7 @@ export interface DesignState {
   greatRoomVaulted?: boolean
   ceilingHeight?: number
   porchSelection?: PorchSelection
+  porchSF?: number  // approx porch SF selected by user
   desiredRooms?: string[]
   masterLocation?: MasterLocation
 }
