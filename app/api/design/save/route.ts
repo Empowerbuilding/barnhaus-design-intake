@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     streetFacing, garageCount, garageAttachment, garageOrientation,
     mainRoofStyle, roofPitch, greatRoomVaulted, ceilingHeight,
     masterLocation, desiredRooms, porchSelection, frontPorchSF, backPorchSF,
-    secondaryRoofStyle, wallHeight, soffitDepth, hasBalcony,
+    secondaryRoofStyle, wallHeight, zoneHeights, soffitDepth, hasBalcony,
     firstName, lastName, email, phone } = body
 
   const garageCarMap: Record<string, string> = {
@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     back_porch_sf: backPorchSF || null,
     secondary_roof_style: secondaryRoofStyle || null,
     wall_height: wallHeight || null,
+    zone_heights: zoneHeights || null,
     soffit_depth: soffitDepth ?? null,
     has_balcony: hasBalcony ?? null,
     garage_count: garageCount || null,

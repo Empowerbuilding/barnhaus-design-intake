@@ -10,6 +10,20 @@ const ROOF_STYLES: { value: RoofStyle; label: string; desc: string; path: string
 ]
 
 const PITCHES: RoofPitch[] = ['2:12', '4:12', '6:12']
+
+const ZONE_LABELS: Record<string, Record<string, string>> = {
+  'h-shape':        { left_wing: 'Left Wing', center_bridge: 'Center Bridge', right_wing: 'Right Wing' },
+  'l-shape':        { main_wing: 'Main Wing', secondary_wing: 'Secondary Wing' },
+  'asymmetric-l':   { main_wing: 'Main Wing', secondary_wing: 'Secondary Wing' },
+  't-shape':        { main_body: 'Main Body', rear_wing: 'Rear Wing' },
+  'u-shape':        { left_wing: 'Left Wing', center_body: 'Center Body', right_wing: 'Right Wing' },
+  'dogtrot':        { left_bar: 'Left Bar', right_bar: 'Right Bar' },
+  'z-shape':        { upper_bar: 'Upper Bar', lower_bar: 'Lower Bar' },
+  'barndominium-bar': { main_bar: 'Main Bar' },
+  'courtyard':      { main_body: 'Main Body' },
+  'rectangle':      {},
+}
+const HEIGHTS = [9, 10, 11, 12, 14, 16]
 const WALL_HEIGHTS = [9, 10, 11, 12, 14, 16]
 const SOFFIT_DEPTHS = [
   { value: 0,  label: 'None',   desc: 'Flush' },
@@ -57,6 +71,7 @@ function RoofPicker({
 
 export default function StepRoof({ state, onChange }: Props) {
   const is2Story = state.stories === 2
+  const shape = state.shape || 'rectangle'
 
   return (
     <div>
@@ -158,6 +173,31 @@ export default function StepRoof({ state, onChange }: Props) {
             ))}
           </div>
         </div>
+
+        {/* Zone-specific wall heights — only for multi-zone shapes */}
+        {shape && ZONE_LABELS[shape] && Object.keys(ZONE_LABELS[shape]).length > 1 && (
+          <div>
+            <label className="text-sm text-gray-300 block mb-1">Zone Wall Heights</label>
+            <p className="text-xs text-gray-500 mb-3">Set different wall heights per section for a more dynamic roofline</p>
+            <div className="space-y-3">
+              {Object.entries(ZONE_LABELS[shape]).map(([zone, label]) => (
+                <div key={zone}>
+                  <div className="text-xs text-gray-400 mb-1.5">{label}</div>
+                  <div className="flex gap-2">
+                    {HEIGHTS.map(h => (
+                      <button key={h} onClick={() => onChange({ zoneHeights: { ...state.zoneHeights, [zone]: h } })}
+                        className={`flex-1 py-2 rounded text-xs font-medium transition ${
+                          state.zoneHeights?.[zone] === h ? 'bg-[#C4A35A] text-black' : 'bg-white/10 text-white hover:bg-white/20'
+                        }`}>
+                        {h}ft
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 2nd story balcony — only show for 2-story */}
         {is2Story && (

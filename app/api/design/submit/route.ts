@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     great_room_vaulted: formData.greatRoomVaulted ?? null,
     ceiling_height: formData.ceilingHeight || null,
     wall_height: formData.wallHeight || null,
+    zone_heights: formData.zoneHeights || null,
     soffit_depth: formData.soffitDepth ?? null,
     has_balcony: formData.hasBalcony ?? null,
 
