@@ -6,6 +6,7 @@ const ROOF_STYLES: { value: RoofStyle; label: string; desc: string; path: string
   { value: 'shed',      label: 'Shed',        desc: 'Single slope',       path: 'M10,50 L90,25 L90,80 L10,80 Z' },
   { value: 'mono_pitch',label: 'Mono-Pitch',  desc: 'Modern angle',       path: 'M10,30 L90,50 L90,80 L10,80 Z' },
   { value: 'hip',       label: 'Hip',         desc: 'All-sides slope',    path: 'M30,25 L70,25 L90,55 L90,80 L10,80 L10,55 Z' },
+  { value: 'flat',      label: 'Flat',        desc: 'Modern flat/low slope', path: 'M10,35 L90,35 L90,80 L10,80 Z' },
 ]
 
 const PITCHES: RoofPitch[] = ['2:12', '4:12', '6:12']
