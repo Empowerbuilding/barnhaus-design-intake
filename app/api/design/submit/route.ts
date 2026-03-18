@@ -31,11 +31,23 @@ export async function POST(req: NextRequest) {
     desired_rooms: formData.desiredRooms || [],
     porch_type: formData.porchSelection || 'none',
 
+    // Step 3 - Rooms & Porches (new fields)
+    porch_sf: formData.porchSF || null,
+
     // Step 4 - Roof
+    sqft: formData.sqft || null,
     main_roof_style: formData.mainRoofStyle || null,
+    secondary_roof_style: formData.secondaryRoofStyle || null,
     roof_pitch: formData.roofPitch || null,
     great_room_vaulted: formData.greatRoomVaulted ?? null,
     ceiling_height: formData.ceilingHeight || null,
+    wall_height: formData.wallHeight || null,
+    soffit_depth: formData.soffitDepth ?? null,
+    has_balcony: formData.hasBalcony ?? null,
+
+    // Garage (new explicit fields)
+    garage_count: formData.garageCount || null,
+    garage_attachment: formData.garageAttachment || null,
 
     // Step 5 - Lot & Orientation
     street_facing: formData.streetFacing || formData.lot?.street_facing || null,
