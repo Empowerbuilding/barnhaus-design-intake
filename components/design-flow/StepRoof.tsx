@@ -2,10 +2,10 @@
 import { DesignState, RoofStyle, RoofPitch } from '@/lib/design-types'
 
 const ROOF_STYLES: { value: RoofStyle; label: string; desc: string; path: string }[] = [
-  { value: 'gable', label: 'Gable', desc: 'Classic peaked roof', path: 'M10,60 L50,20 L90,60 L90,80 L10,80 Z' },
-  { value: 'shed', label: 'Shed', desc: 'Single slope', path: 'M10,50 L90,25 L90,80 L10,80 Z' },
-  { value: 'mono_pitch', label: 'Mono-Pitch', desc: 'Modern single angle', path: 'M10,30 L90,50 L90,80 L10,80 Z' },
-  { value: 'hip', label: 'Hip', desc: 'Slopes on all sides', path: 'M30,25 L70,25 L90,55 L90,80 L10,80 L10,55 Z' },
+  { value: 'gable',      label: 'Gable',      desc: 'Classic peaked',    path: 'M10,60 L50,20 L90,60 L90,80 L10,80 Z' },
+  { value: 'shed',       label: 'Shed',        desc: 'Single slope',      path: 'M10,50 L90,25 L90,80 L10,80 Z' },
+  { value: 'mono_pitch', label: 'Mono-Pitch',  desc: 'Modern angle',      path: 'M10,30 L90,50 L90,80 L10,80 Z' },
+  { value: 'hip',        label: 'Hip',         desc: 'Slopes all sides',  path: 'M30,25 L70,25 L90,55 L90,80 L10,80 L10,55 Z' },
 ]
 
 const PITCHES: RoofPitch[] = ['2:12', '4:12', '6:12']
@@ -16,30 +16,72 @@ type Props = {
   onChange: (p: Partial<DesignState>) => void
 }
 
+function RoofGrid({ selected, onSelect, label, dim }: {
+  selected: RoofStyle | undefined
+  onSelect: (v: RoofStyle) => void
+  label: string
+  dim?: boolean
+}) {
+  return (
+    <div className={`mb-6 ${dim ? 'opacity-60' : ''}`}>
+      <label className="text-sm text-gray-300 block mb-3">{label}</label>
+      <div className="grid grid-cols-2 gap-3">
+        {ROOF_STYLES.map(r => (
+          <button key={r.value} onClick={() => onSelect(r.value)}
+            className={`p-3 rounded-lg border-2 text-center transition-all ${
+              selected === r.value
+                ? 'border-[#C4A35A] bg-[#C4A35A]/10'
+                : 'border-white/10 bg-white/5 hover:border-white/30'
+            }`}>
+            <svg viewBox="0 0 100 100" className="w-full h-12 mb-1.5">
+              <path d={r.path}
+                fill={selected === r.value ? '#C4A35A33' : '#ffffff11'}
+                stroke={selected === r.value ? '#C4A35A' : '#888'}
+                strokeWidth="3"/>
+            </svg>
+            <div className="font-semibold text-xs">{r.label}</div>
+            <div className="text-xs text-gray-500 mt-0.5">{r.desc}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function StepRoof({ state, onChange }: Props) {
+  const hasSecondary = !!state.secondaryRoofStyle
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-1">Roof</h2>
-      <p className="text-gray-400 text-sm mb-6">Choose your roof style, pitch, and ceiling height.</p>
+      <p className="text-gray-400 text-sm mb-6">Mix roof styles for different sections of your home.</p>
 
-      <div className="mb-8">
-        <label className="text-sm text-gray-300 block mb-3">Primary Roof Style</label>
-        <div className="grid grid-cols-2 gap-3">
-          {ROOF_STYLES.map(r => (
-            <button key={r.value} onClick={() => onChange({ mainRoofStyle: r.value })}
-              className={`p-3 rounded-lg border-2 text-center transition-all ${
-                state.mainRoofStyle === r.value ? 'border-[#C4A35A] bg-[#C4A35A]/10' : 'border-white/10 bg-white/5 hover:border-white/30'
-              }`}>
-              <svg viewBox="0 0 100 100" className="w-full h-12 mb-1.5">
-                <path d={r.path} fill={state.mainRoofStyle === r.value ? '#C4A35A33' : '#ffffff11'}
-                  stroke={state.mainRoofStyle === r.value ? '#C4A35A' : '#888'} strokeWidth="3"/>
-              </svg>
-              <div className="font-semibold text-xs">{r.label}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{r.desc}</div>
-            </button>
-          ))}
-        </div>
+      <RoofGrid
+        label="Primary Roof Style"
+        selected={state.mainRoofStyle}
+        onSelect={v => onChange({ mainRoofStyle: v })}
+      />
+
+      {/* Secondary roof toggle */}
+      <div className="mb-4">
+        <button
+          onClick={() => onChange({ secondaryRoofStyle: hasSecondary ? undefined : 'shed' })}
+          className="text-sm text-[#C4A35A] hover:text-[#D4B36A] transition flex items-center gap-1.5">
+          {hasSecondary ? '− Remove secondary roof' : '+ Add secondary roof style'}
+        </button>
+        {!hasSecondary && (
+          <p className="text-xs text-gray-600 mt-1">Common combo: gable main + shed over garage or porch</p>
+        )}
       </div>
+
+      {hasSecondary && (
+        <RoofGrid
+          label="Secondary Roof Style (garage, wing, or porch)"
+          selected={state.secondaryRoofStyle}
+          onSelect={v => onChange({ secondaryRoofStyle: v })}
+          dim={false}
+        />
+      )}
 
       <div className="mb-6">
         <label className="text-sm text-gray-300 block mb-2">Roof Pitch</label>
@@ -61,15 +103,11 @@ export default function StepRoof({ state, onChange }: Props) {
           <button onClick={() => onChange({ greatRoomVaulted: true })}
             className={`flex-1 py-2.5 rounded text-sm font-medium transition ${
               state.greatRoomVaulted === true ? 'bg-[#C4A35A] text-black' : 'bg-white/10 text-white hover:bg-white/20'
-            }`}>
-            Yes
-          </button>
+            }`}>Yes</button>
           <button onClick={() => onChange({ greatRoomVaulted: false })}
             className={`flex-1 py-2.5 rounded text-sm font-medium transition ${
               state.greatRoomVaulted === false ? 'bg-[#C4A35A] text-black' : 'bg-white/10 text-white hover:bg-white/20'
-            }`}>
-            No
-          </button>
+            }`}>No</button>
         </div>
       </div>
 

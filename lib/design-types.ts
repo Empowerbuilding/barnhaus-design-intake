@@ -99,6 +99,7 @@ export interface DesignState {
   email?: string
   phone?: string
   mainRoofStyle?: RoofStyle
+  secondaryRoofStyle?: RoofStyle  // for wings, garage, porch
   roofPitch?: RoofPitch
   greatRoomVaulted?: boolean
   ceilingHeight?: number
