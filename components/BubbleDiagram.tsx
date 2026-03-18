@@ -245,7 +245,7 @@ export default function BubbleDiagram({ state, onBubblesChange }: Props) {
 
   return (
     <div className="w-full select-none">
-      <p className="text-xs text-gray-500 mb-2 text-center">Drag rooms to move · Drag corners to resize</p>
+      <p className="text-xs text-gray-400 mb-2 text-center">Drag bubble to <span class=\"text-[#C4A35A]\">move</span> · Drag corner dots to <span class=\"text-[#C4A35A]\">resize</span></p>
       <svg ref={svgRef} width="100%" viewBox={`0 0 ${VP_W} ${VP_H}`}
         style={{ cursor: dragRef.current || resizeRef.current ? 'grabbing' : 'default', touchAction: 'none' }}
         onClick={onSvgClick}>
@@ -283,27 +283,25 @@ export default function BubbleDiagram({ state, onBubblesChange }: Props) {
                 </text>
               </g>
 
-              {/* Resize handles — visible when selected */}
-              {isSelected && (
-                <>
-                  {[
-                    { dx: handleOffset, dy: -0.85 * handleOffset, cursor: 'nesw-resize' },
-                    { dx: -handleOffset, dy: -0.85 * handleOffset, cursor: 'nwse-resize' },
-                    { dx: handleOffset, dy: 0.85 * handleOffset, cursor: 'nwse-resize' },
-                    { dx: -handleOffset, dy: 0.85 * handleOffset, cursor: 'nesw-resize' },
-                  ].map((h, i) => (
-                    <rect key={i}
-                      x={b.x + b.r * h.dx - 4}
-                      y={b.y + b.r * h.dy - 4}
-                      width={8} height={8} rx={1}
-                      fill="#C4A35A" stroke="#000" strokeWidth={0.5}
-                      style={{ cursor: h.cursor }}
-                      onMouseDown={e => onHandleDown(b.id, e)}
-                      onTouchStart={e => onHandleTouchStart(b.id, e)}
-                    />
-                  ))}
-                </>
-              )}
+              {/* Resize handles — always visible, bigger when selected */}
+              {[
+                { dx: handleOffset, dy: -0.85 * handleOffset, cursor: 'nesw-resize' },
+                { dx: -handleOffset, dy: -0.85 * handleOffset, cursor: 'nwse-resize' },
+                { dx: handleOffset, dy: 0.85 * handleOffset, cursor: 'nwse-resize' },
+                { dx: -handleOffset, dy: 0.85 * handleOffset, cursor: 'nesw-resize' },
+              ].map((h, i) => (
+                <circle key={i}
+                  cx={b.x + b.r * h.dx}
+                  cy={b.y + b.r * h.dy}
+                  r={isSelected ? 5 : 3}
+                  fill={isSelected ? '#C4A35A' : 'rgba(196,163,90,0.5)'}
+                  stroke={isSelected ? '#000' : 'none'}
+                  strokeWidth={0.5}
+                  style={{ cursor: h.cursor }}
+                  onMouseDown={e => onHandleDown(b.id, e)}
+                  onTouchStart={e => onHandleTouchStart(b.id, e)}
+                />
+              ))}
             </g>
           )
         })}
