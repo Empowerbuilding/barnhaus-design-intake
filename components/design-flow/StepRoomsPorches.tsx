@@ -80,15 +80,34 @@ export default function StepRoomsPorches({ state, onChange }: Props) {
         </div>
       </div>
 
-      {/* Porch size — only show if porch selected */}
-      {hasPorch && (
+      {/* Porch sizes — split by front/back */}
+      {(state.porchSelection === 'front' || state.porchSelection === 'both') && (
         <div>
-          <label className="text-sm text-gray-300 block mb-3">Porch Size</label>
+          <label className="text-sm text-gray-300 block mb-3">Front Porch Size</label>
           <div className="grid grid-cols-2 gap-2">
             {PORCH_SIZES.map(s => (
-              <button key={s.value} onClick={() => onChange({ porchSF: s.value })}
+              <button key={s.value} onClick={() => onChange({ frontPorchSF: s.value })}
                 className={`py-2.5 px-3 rounded-lg border text-left transition ${
-                  state.porchSF === s.value
+                  state.frontPorchSF === s.value
+                    ? 'border-[#C4A35A] bg-[#C4A35A]/10'
+                    : 'border-white/10 bg-white/5 hover:border-white/30'
+                }`}>
+                <div className="text-sm font-medium text-white">{s.label}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{s.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(state.porchSelection === 'back' || state.porchSelection === 'both') && (
+        <div className="mt-5">
+          <label className="text-sm text-gray-300 block mb-3">Back Porch Size</label>
+          <div className="grid grid-cols-2 gap-2">
+            {PORCH_SIZES.map(s => (
+              <button key={s.value} onClick={() => onChange({ backPorchSF: s.value })}
+                className={`py-2.5 px-3 rounded-lg border text-left transition ${
+                  state.backPorchSF === s.value
                     ? 'border-[#C4A35A] bg-[#C4A35A]/10'
                     : 'border-white/10 bg-white/5 hover:border-white/30'
                 }`}>

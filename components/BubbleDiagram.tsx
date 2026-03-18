@@ -77,12 +77,13 @@ function buildBubbles(state: DesignState): Bubble[] {
   }
 
   // Porches
-  const porchSF = state.porchSF || 400
-  const pr = porchSF <= 200 ? 22 : porchSF <= 400 ? 30 : porchSF <= 700 ? 40 : 52
+  const sfToR = (sf: number) => sf <= 200 ? 22 : sf <= 400 ? 30 : sf <= 700 ? 40 : 52
   if (porch === 'front' || porch === 'both') {
-    list.push({ id: 'front_porch', label: 'Front Porch', r: pr, type: 'porch', x: 280, y: 390 })
+    const pr = sfToR(state.frontPorchSF || 400)
+    list.push({ id: 'front_porch', label: 'Front Porch', r: pr, type: 'porch', x: 200, y: 390 })
   }
   if (porch === 'back' || porch === 'both') {
+    const pr = sfToR(state.backPorchSF || 400)
     list.push({ id: 'back_porch', label: 'Back Porch', r: pr, type: 'porch', x: 380, y: 390 })
   }
 
@@ -121,7 +122,7 @@ export default function BubbleDiagram({ state, onBubblesChange }: Props) {
     const roomsStr = JSON.stringify(state.desiredRooms)
     if (state.bedrooms !== prevBeds.current || state.bathrooms !== prevBaths.current ||
         state.garageCount !== prevGarage.current || roomsStr !== prevRooms.current ||
-        state.porchSelection !== prevPorch.current) {
+        state.porchSelection !== prevPorch.current || state.frontPorchSF !== prevBeds.current || state.backPorchSF !== prevBaths.current) {
       prevBeds.current = state.bedrooms
       prevBaths.current = state.bathrooms
       prevGarage.current = state.garageCount

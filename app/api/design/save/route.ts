@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const { sessionId, step, sqft, bedrooms, bathrooms, shape,
     streetFacing, garageCount, garageAttachment, garageOrientation,
     mainRoofStyle, roofPitch, greatRoomVaulted, ceilingHeight,
-    masterLocation, desiredRooms, porchSelection, porchSF,
+    masterLocation, desiredRooms, porchSelection, frontPorchSF, backPorchSF,
     secondaryRoofStyle, wallHeight, soffitDepth, hasBalcony,
     firstName, lastName, email, phone } = body
 
@@ -41,7 +41,8 @@ export async function POST(req: NextRequest) {
     master_location: masterLocation || null,
     desired_rooms: desiredRooms && desiredRooms.length > 0 ? desiredRooms.join(',') : null,
     porch_type: porchSelection || null,
-    porch_sf: porchSF || null,
+    front_porch_sf: frontPorchSF || null,
+    back_porch_sf: backPorchSF || null,
     secondary_roof_style: secondaryRoofStyle || null,
     wall_height: wallHeight || null,
     soffit_depth: soffitDepth ?? null,

@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
     porch_type: formData.porchSelection || 'none',
 
     // Step 3 - Rooms & Porches (new fields)
-    porch_sf: formData.porchSF || null,
+    front_porch_sf: formData.frontPorchSF || null,
+    back_porch_sf: formData.backPorchSF || null,
 
     // Step 4 - Roof
     sqft: formData.sqft || null,
