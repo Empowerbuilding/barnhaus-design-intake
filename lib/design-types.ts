@@ -10,6 +10,9 @@ export type Priority = 'master_privacy' | 'open_living' | 'outdoor_connection' |
 export type MasterLocation = 'far_left' | 'far_right' | 'rear_center' | 'front_center' | 'no_preference'
 export type ClosetConfig = 'single_wic' | 'his_and_hers' | 'no_preference'
 export type BathConfig = 'ensuite_each' | 'shared_hall' | 'jack_and_jill' | 'mix'
+export type RoofStyle = 'gable' | 'shed' | 'mono_pitch' | 'hip'
+export type RoofPitch = '2:12' | '4:12' | '6:12'
+export type PorchSelection = 'front' | 'back' | 'both' | 'none'
 
 export interface MasterSuite {
   location?: MasterLocation
@@ -94,6 +97,13 @@ export interface DesignState {
   lastName?: string
   email?: string
   phone?: string
+  mainRoofStyle?: RoofStyle
+  roofPitch?: RoofPitch
+  greatRoomVaulted?: boolean
+  ceilingHeight?: number
+  porchSelection?: PorchSelection
+  desiredRooms?: string[]
+  masterLocation?: MasterLocation
 }
 
 export interface Room {

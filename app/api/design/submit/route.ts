@@ -15,58 +15,31 @@ export async function POST(req: NextRequest) {
     email,
     phone: phone || null,
 
-    // Step 1 - Style
-    aesthetic_style: formData.style || null,
-
-    // Step 2 - Size
+    // Step 1 - Size
     living: formData.sqft ? String(formData.sqft) : null,
     bedrooms: formData.bedrooms ? String(formData.bedrooms) : null,
     bathrooms: formData.bathrooms ? String(formData.bathrooms) : null,
-    full_baths: formData.fullBaths || null,
-    half_baths: formData.halfBaths || null,
-    bath_config: formData.bathConfig || null,
     stories: formData.stories || null,
 
-    // Step 3 - Shape
+    // Step 2 - Shape & Garage
     house_shape: formData.shape || null,
-
-    // Step 5 - Garage
-    garage_cars: formData.garageCount ? parseInt(formData.garageCount as string) : null,
+    garage_cars: formData.garageCount ? parseInt(formData.garageCount as string) || 0 : null,
     garage_type: formData.garageAttachment || null,
     garage_orientation: formData.garageOrientation || null,
 
-    // Step 6 - Features + expanded lifestyle data
-    desired_rooms: {
-      ...(formData.features || {}),
-      bath_config: formData.bathConfig || null,
-      master_suite: formData.masterSuite || null,
-      lifestyle: formData.lifestyle || null,
-    },
-    porch_type: formData.features ? [
-      formData.features.covered_front_porch && 'front',
-      formData.features.covered_back_porch && 'rear',
-      formData.features.screened_porch && 'screened',
-    ].filter(Boolean).join('+') || 'none' : null,
+    // Step 3 - Rooms & Porches
+    desired_rooms: formData.desiredRooms || [],
+    porch_type: formData.porchSelection || 'none',
 
-    // Revit agent fields
-    kitchen_layout: formData.kitchenLayout || null,
+    // Step 4 - Roof
     main_roof_style: formData.mainRoofStyle || null,
-    garage_roof_style: formData.garageRoofStyle || null,
-    hallway_type: formData.hallwayType || null,
     roof_pitch: formData.roofPitch || null,
+    great_room_vaulted: formData.greatRoomVaulted ?? null,
+    ceiling_height: formData.ceilingHeight || null,
 
-    // Step 7 - Architecture
-    wall_height: formData.architecture?.wall_height || 'standard',
-    zone_heights: formData.architecture?.zone_heights || null,
-    window_style: formData.architecture?.window_style || 'fixed',
-    exterior_material: formData.architecture?.exterior_material || null,
-
-    // Zone map + bubble diagram
-    zone_map_url: formData.selectedZoneMap || null,
-    bubble_positions: formData.bubblePositions || {},
-    bubble_data: formData.bubbles || [],
-
-    // Step 1 - Lot / Site context
+    // Step 5 - Lot & Orientation
+    street_facing: formData.streetFacing || formData.lot?.street_facing || null,
+    master_location: formData.masterLocation || null,
     lot_address: formData.lot?.lot_address || null,
     lot_lat: formData.lot?.lot_lat || null,
     lot_lng: formData.lot?.lot_lng || null,
@@ -74,11 +47,16 @@ export async function POST(req: NextRequest) {
     lot_parcel_id: formData.lot?.lot_parcel_id || null,
     lot_boundary_geojson: formData.lot?.lot_boundary_geojson || null,
     house_rotation_deg: formData.lot?.house_rotation_deg ?? null,
-    street_facing: formData.lot?.street_facing || null,
     garage_facing: formData.lot?.garage_facing || null,
     driveway_approach: formData.lot?.driveway_approach || null,
     lot_flags: formData.lot?.lot_flags || null,
     lot_notes: formData.lot?.lot_notes || null,
+
+    // Step 6 - Bubble diagram
+    bubble_data: formData.bubbles || [],
+    bubble_positions: formData.bubbles ? Object.fromEntries(
+      (formData.bubbles as {id:string;x:number;y:number}[]).map(b => [b.id, { x: b.x, y: b.y }])
+    ) : {},
 
     status: 'new',
     submitted_at: new Date().toISOString(),

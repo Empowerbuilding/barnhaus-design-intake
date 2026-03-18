@@ -1,21 +1,16 @@
 'use client'
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { DesignState, LotData } from '@/lib/design-types'
+import { DesignState, LotData, Direction, MasterLocation } from '@/lib/design-types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let mapboxgl: any = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let MapboxDraw: any = null
 
-interface Props {
+type Props = {
   state: DesignState
-  update: (patch: Partial<DesignState>) => void
-  onNext: () => void
+  onChange: (p: Partial<DesignState>) => void
 }
-
-const COMPASS_DIRS = ['N','NE','E','SE','S','SW','W','NW'] as const
-function rotationToCardinal(deg: number) { return COMPASS_DIRS[Math.round(((deg+180)%360)/45)%8] }
-function rotationToSide(deg: number, offset: number) { return COMPASS_DIRS[Math.round(((deg+offset)%360)/45)%8] }
 
 const MAP_STYLES = [
   { id: 'satellite', label: '🛰 Satellite', url: 'mapbox://styles/mapbox/satellite-streets-v12' },
@@ -41,86 +36,90 @@ const LOT_FLAGS = [
   { id: 'rural',  label: '🤠 Rural' },
 ]
 
-const DRIVEWAY_OPTIONS = [
-  { id: 'left_turn',   label: '← Left turn in' },
-  { id: 'straight_in', label: '↑ Straight in' },
-  { id: 'right_turn',  label: '→ Right turn in' },
+const STREET_FACING: { value: Direction; label: string }[] = [
+  { value: 'N', label: '↑ North' },
+  { value: 'S', label: '↓ South' },
+  { value: 'E', label: '→ East' },
+  { value: 'W', label: '← West' },
 ]
 
-const SQFT_PRESETS = [
-  { label: '1,500 SF', value: 1500 },
-  { label: '2,000 SF', value: 2000 },
-  { label: '2,500 SF', value: 2500 },
-  { label: '3,000 SF', value: 3000 },
-  { label: '3,500 SF', value: 3500 },
-  { label: '4,000+ SF', value: 4500 },
+const MASTER_LOCATIONS: { value: MasterLocation; label: string }[] = [
+  { value: 'far_left', label: 'Far Left' },
+  { value: 'far_right', label: 'Far Right' },
+  { value: 'rear_center', label: 'Rear Center' },
+  { value: 'no_preference', label: 'No Preference' },
 ]
 
-// Build a rotated GeoJSON rectangle centered at [lng, lat]
-// widthFt and depthFt are real-world feet, rotationDeg rotates the rectangle
+const DIR_TO_ROTATION: Record<Direction, number> = { N: 180, S: 0, E: 270, W: 90 }
+
 function buildFootprintGeoJSON(lng: number, lat: number, widthFt: number, depthFt: number, rotationDeg: number) {
-  // Convert feet to degrees (approximate, good enough at lot scale)
   const ftPerDegLng = 364000 * Math.cos(lat * Math.PI / 180)
   const ftPerDegLat = 364000
-  const hw = (widthFt / 2) / ftPerDegLng  // half-width in degrees
-  const hd = (depthFt / 2) / ftPerDegLat  // half-depth in degrees
+  const hw = (widthFt / 2) / ftPerDegLng
+  const hd = (depthFt / 2) / ftPerDegLat
   const rad = rotationDeg * Math.PI / 180
-
-  // Corners relative to center (unrotated)
-  const corners = [
-    [-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd], [-hw, -hd]
-  ]
-  // Rotate each corner
+  const corners = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd], [-hw, -hd]]
   const rotated = corners.map(([x, y]) => [
     lng + x * Math.cos(rad) - y * Math.sin(rad),
     lat + x * Math.sin(rad) + y * Math.cos(rad),
   ])
-  return {
-    type: 'Feature' as const,
-    geometry: { type: 'Polygon' as const, coordinates: [rotated] },
-    properties: {},
-  }
+  return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [rotated] }, properties: {} }
 }
 
-function sqftToDimensions(sf: number): { widthFt: number; depthFt: number } {
-  // Full footprint (single story), 1.7:1 width:depth
+function sqftToDimensions(sf: number) {
   const depthFt = Math.sqrt(sf / 1.7)
-  const widthFt = depthFt * 1.7
-  return { widthFt, depthFt }
+  return { widthFt: depthFt * 1.7, depthFt }
 }
 
-export default function StepLot({ state, update, onNext }: Props) {
+export default function StepLot({ state, onChange }: Props) {
   const mapContainer = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dragMarkerRef = useRef<any>(null)   // tiny drag handle marker
+  const dragMarkerRef = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const drawRef = useRef<any>(null)
   const houseCenter = useRef<[number, number] | null>(null)
 
   const [query, setQuery] = useState(state.lot?.lot_address?.split(',')[0] ?? '')
   const [suggestions, setSuggestions] = useState<{ place_name: string; center: [number, number] }[]>([])
-  const [rotation, setRotation] = useState(state.lot?.house_rotation_deg ?? 180)
-  const [driveway, setDriveway] = useState(state.lot?.driveway_approach ?? '')
-  const [garageSide, setGarageSide] = useState(state.lot?.garage_facing ?? '')
-  const [flags, setFlags] = useState<string[]>(state.lot?.lot_flags ?? [])
-  const [notes, setNotes] = useState(state.lot?.lot_notes ?? '')
   const [lotData, setLotData] = useState<Partial<LotData>>(state.lot ?? {})
   const [showMap, setShowMap] = useState(!!state.lot?.lot_address)
-  const [substep, setSubstep] = useState<'address'|'orient'|'driveway'|'flags'>(
-    state.lot?.lot_address ? 'orient' : 'address'
-  )
   const [boundarySource, setBoundarySource] = useState('')
   const [lotSizeDisplay, setLotSizeDisplay] = useState('')
   const [mapStyle, setMapStyle] = useState('satellite')
   const [activeTool, setActiveTool] = useState('simple_select')
   const [mbLoaded, setMbLoaded] = useState(false)
-  const [sqft, setSqft] = useState(state.sqft ?? 2500)
+  const [flags, setFlags] = useState<string[]>(state.lot?.lot_flags ?? [])
+  const [notes, setNotes] = useState(state.lot?.lot_notes ?? '')
+  const [streetDir, setStreetDir] = useState<Direction | undefined>(state.streetFacing)
+  const [rotation, setRotation] = useState(state.lot?.house_rotation_deg ?? (state.streetFacing ? DIR_TO_ROTATION[state.streetFacing] : 180))
 
   const suppressSearch = useRef(false)
   const sqftRef = useRef(state.sqft ?? 2500)
-  const rotationRef = useRef(state.lot?.house_rotation_deg ?? 180)
+  const rotationRef = useRef(rotation)
+  const onChangeRef = useRef(onChange)
+  useEffect(() => { onChangeRef.current = onChange }, [onChange])
+
+  // Sync sqft from parent
+  useEffect(() => { sqftRef.current = state.sqft ?? 2500 }, [state.sqft])
+
+  // Sync lot data to parent (debounced)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      onChangeRef.current({
+        lot: {
+          ...lotData,
+          house_rotation_deg: rotation,
+          street_facing: streetDir,
+          lot_flags: flags,
+          lot_notes: notes,
+        } as LotData,
+      })
+    }, 200)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lotData.lot_address, lotData.lot_lat, lotData.lot_lng, rotation, flags.length, notes])
 
   // Load mapbox + draw dynamically
   useEffect(() => {
@@ -135,7 +134,6 @@ export default function StepLot({ state, update, onNext }: Props) {
     })
   }, [])
 
-  // Update the GeoJSON footprint layer (purely in map coords — always perfectly scaled)
   const updateFootprint = useCallback(() => {
     if (!mapRef.current || !houseCenter.current) return
     const [lng, lat] = houseCenter.current
@@ -146,33 +144,22 @@ export default function StepLot({ state, update, onNext }: Props) {
     }
   }, [])
 
-  // Sync refs and update footprint on rotation change
   useEffect(() => {
     rotationRef.current = rotation
     updateFootprint()
   }, [rotation, updateFootprint])
 
-  // Sync refs and update footprint on sqft change
-  useEffect(() => {
-    sqftRef.current = sqft
-    updateFootprint()
-  }, [sqft, updateFootprint])
-
   const placeDragHandle = useCallback((lnglat: [number, number]) => {
     if (!mapRef.current || !mapboxgl) return
     if (dragMarkerRef.current) dragMarkerRef.current.remove()
-
-    // Small crosshair drag handle
     const el = document.createElement('div')
     el.style.cssText = `width:28px;height:28px;cursor:move;display:flex;align-items:center;justify-content:center;
       background:rgba(245,158,11,0.9);border:2px solid #fff;border-radius:50%;
       box-shadow:0 2px 8px rgba(0,0,0,0.6);font-size:14px;`
     el.textContent = '✛'
-
     const marker = new mapboxgl.Marker({ element: el, draggable: true, anchor: 'center' })
       .setLngLat(lnglat)
       .addTo(mapRef.current)
-
     marker.on('drag', () => {
       const p = marker.getLngLat()
       houseCenter.current = [p.lng, p.lat]
@@ -196,7 +183,6 @@ export default function StepLot({ state, update, onNext }: Props) {
       paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.25 } })
     m.addLayer({ id: 'house-outline', type: 'line', source: 'house-footprint',
       paint: { 'line-color': '#f59e0b', 'line-width': 2.5 } })
-    // Front face indicator (slightly darker line on south face)
     m.addLayer({ id: 'house-label', type: 'symbol', source: 'house-footprint',
       layout: { 'text-field': '🏠 FRONT', 'text-size': 11, 'text-anchor': 'center' },
       paint: { 'text-color': '#f59e0b', 'text-halo-color': '#000', 'text-halo-width': 1.5 } })
@@ -207,7 +193,6 @@ export default function StepLot({ state, update, onNext }: Props) {
     houseCenter.current = lnglat
     const { widthFt, depthFt } = sqftToDimensions(sqftRef.current)
     const geojson = buildFootprintGeoJSON(lnglat[0], lnglat[1], widthFt, depthFt, rotationRef.current)
-
     if (mapRef.current.isStyleLoaded()) {
       addFootprintLayers(mapRef.current, geojson)
       mapRef.current.getSource('house-footprint')?.setData(geojson)
@@ -252,21 +237,17 @@ export default function StepLot({ state, update, onNext }: Props) {
   const initMap = useCallback(() => {
     if (!mapContainer.current || mapRef.current || !mapboxgl || !MapboxDraw) return
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
-
     const center: [number,number] = lotData.lot_lng && lotData.lot_lat
       ? [lotData.lot_lng, lotData.lot_lat] : [-98.5, 29.5]
-
     const map = new mapboxgl.Map({
       container: mapContainer.current,
       style: MAP_STYLES[0].url,
       center,
       zoom: lotData.lot_lat ? 17 : 9,
     })
-
     map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right')
     map.addControl(new mapboxgl.FullscreenControl(), 'top-right')
     map.addControl(new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'imperial' }), 'bottom-right')
-
     const draw = new MapboxDraw({
       displayControlsDefault: false,
       controls: {},
@@ -288,7 +269,6 @@ export default function StepLot({ state, update, onNext }: Props) {
     map.addControl(draw)
     drawRef.current = draw
     mapRef.current = map
-
     map.on('load', () => {
       if (lotData.lot_lat && lotData.lot_lng) {
         loadBoundary(lotData.lot_lat, lotData.lot_lng)
@@ -332,7 +312,6 @@ export default function StepLot({ state, update, onNext }: Props) {
     setSuggestions([])
     setLotData(prev => ({ ...prev, lot_address: place.place_name, lot_lat: lat, lot_lng: lng }))
     setShowMap(true)
-
     const tryPlace = () => {
       if (!mapRef.current) return false
       mapRef.current.flyTo({ center: [lng, lat], zoom: 17, essential: true })
@@ -340,7 +319,6 @@ export default function StepLot({ state, update, onNext }: Props) {
         loadBoundary(lat, lng)
         placeHouseOnMap([lng, lat])
       })
-      setSubstep('orient')
       return true
     }
     if (!tryPlace()) {
@@ -362,42 +340,18 @@ export default function StepLot({ state, update, onNext }: Props) {
     return () => clearTimeout(t)
   }, [query, searchAddress])
 
-  const canProceed = !!lotData.lot_address && !!driveway && !!garageSide
-
-  const handleNext = () => {
-    update({
-      sqft,
-      lot: {
-        ...lotData,
-        house_rotation_deg: rotation,
-        street_facing: rotationToCardinal(rotation),
-        garage_facing: garageSide,
-        driveway_approach: driveway,
-        lot_flags: flags,
-        lot_notes: notes,
-      } as LotData,
-    })
-    onNext()
+  const handleStreetFacing = (dir: Direction) => {
+    const rot = DIR_TO_ROTATION[dir]
+    setStreetDir(dir)
+    setRotation(rot)
+    onChange({ streetFacing: dir })
   }
-
-
-
-  const { widthFt, depthFt } = sqftToDimensions(sqft)
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold text-white mb-1">Your Lot</h2>
-        <p className="text-stone-400 text-sm">Place your home on the actual property to orient the design.</p>
-      </div>
-
-      <div className="flex gap-1.5">
-        {(['address','orient','driveway','flags'] as const).map((s,i) => (
-          <div key={s} className={`h-1 flex-1 rounded-full transition-colors ${
-            substep === s ? 'bg-amber-500' :
-            (['address','orient','driveway','flags'].indexOf(substep) > i) ? 'bg-amber-700' : 'bg-stone-700'
-          }`}/>
-        ))}
+        <h2 className="text-2xl font-bold text-white mb-1">Lot & Orientation</h2>
+        <p className="text-stone-400 text-sm">Place your home on the property and set orientation.</p>
       </div>
 
       {/* Address */}
@@ -415,26 +369,6 @@ export default function StepLot({ state, update, onNext }: Props) {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Sqft size picker */}
-      <div>
-        <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">
-          Approximate home size
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {SQFT_PRESETS.map(p => (
-            <button key={p.value} onClick={() => setSqft(p.value)}
-              className={`py-2 rounded-xl border text-sm font-medium transition-all ${
-                sqft === p.value
-                  ? 'border-amber-500 bg-amber-500/10 text-amber-400'
-                  : 'border-stone-700 bg-stone-800 text-stone-300 hover:border-stone-500'
-              }`}>{p.label}</button>
-          ))}
-        </div>
-        <p className="text-xs text-stone-600 mt-1.5">
-          ~{Math.round(widthFt)}ft wide × {Math.round(depthFt)}ft deep · footprint drawn true-to-scale on map
-        </p>
       </div>
 
       {showMap && (
@@ -456,10 +390,8 @@ export default function StepLot({ state, update, onNext }: Props) {
           </div>
 
           {/* Map */}
-          <div className="relative rounded-xl overflow-hidden border border-stone-700" style={{height:420}}>
+          <div className="relative rounded-xl overflow-hidden border border-stone-700" style={{height:360}}>
             <div ref={mapContainer} className="w-full h-full"/>
-
-            {/* Draw toolbar */}
             <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
               {DRAW_TOOLS.map(t => (
                 <button key={t.id} title={t.title} onClick={() => handleDrawTool(t.id)}
@@ -470,160 +402,59 @@ export default function StepLot({ state, update, onNext }: Props) {
                   }`}>{t.label}</button>
               ))}
             </div>
-
-            {substep === 'orient' && (
-              <div className="absolute bottom-10 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2.5 py-1.5 rounded-lg">
-                Drag ✛ to position · rotate below
-              </div>
-            )}
-          </div>
-
-          {/* Orientation */}
-          {substep !== 'address' && (
-            <div className="bg-stone-800/80 border border-stone-700 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white font-semibold text-sm">Orient the house</p>
-                  <p className="text-stone-400 text-xs mt-0.5">
-                    Front → <span className="text-amber-400 font-bold">{rotationToCardinal(rotation)}</span>
-                    <span className="mx-2 text-stone-600">·</span>
-                    Garage → <span className="text-amber-400 font-bold">{rotationToSide(rotation,270)}</span>
-                  </p>
-                </div>
-                <div className="relative w-10 h-10 flex items-center justify-center">
-                  <div className="w-10 h-10 rounded-full border border-stone-600 flex items-center justify-center">
-                    <span className="text-red-400 text-sm font-black" style={{transform:`rotate(${-rotation}deg)`,display:'block'}}>▲</span>
-                  </div>
-                  <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] text-stone-400 font-bold">N</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button onClick={() => setRotation(r => (r-45+360)%360)}
-                  className="bg-stone-700 hover:bg-stone-600 text-white rounded-lg w-10 h-10 flex items-center justify-center text-lg font-bold">↺</button>
-                <input type="range" min={0} max={359} value={rotation}
-                  onChange={e => setRotation(Number(e.target.value))}
-                  className="flex-1 accent-amber-500"/>
-                <button onClick={() => setRotation(r => (r+45)%360)}
-                  className="bg-stone-700 hover:bg-stone-600 text-white rounded-lg w-10 h-10 flex items-center justify-center text-lg font-bold">↻</button>
-              </div>
-
-              <div className="grid grid-cols-4 gap-1.5">
-                {[{l:'↑ N',v:0},{l:'→ E',v:270},{l:'↓ S',v:180},{l:'← W',v:90}].map(p => (
-                  <button key={p.v} onClick={() => setRotation(p.v)}
-                    className={`py-1.5 text-xs rounded-lg border transition-colors ${
-                      rotation===p.v ? 'border-amber-500 bg-amber-500/10 text-amber-400' : 'border-stone-700 text-stone-400 hover:border-stone-500'
-                    }`}>{p.l}</button>
-                ))}
-              </div>
-
-              {substep === 'orient' && (
-                <button onClick={() => setSubstep('driveway')}
-                  className="w-full py-2.5 bg-stone-700 hover:bg-stone-600 text-white rounded-lg text-sm font-medium">
-                  Set driveway direction →
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Driveway + Garage */}
-      {showMap && substep !== 'address' && substep !== 'orient' && (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">Driveway approach from street</label>
-            <div className="grid grid-cols-3 gap-2">
-              {DRIVEWAY_OPTIONS.map(opt => (
-                <button key={opt.id} onClick={() => { setDriveway(opt.id); if (!substep.includes('flags')) setSubstep('flags') }}
-                  className={`py-3 px-2 rounded-xl border text-sm font-medium transition-all ${
-                    driveway===opt.id ? 'border-amber-500 bg-amber-500/10 text-amber-400' : 'border-stone-700 bg-stone-800 text-stone-300 hover:border-stone-500'
-                  }`}>{opt.label}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* Garage placement — as seen from the street */}
-          <div>
-            <label className="block text-xs text-stone-400 mb-3 uppercase tracking-wider">
-              Garage location <span className="normal-case text-stone-500">— as seen from the street</span>
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { id: rotationToSide(rotation, 270), label: 'Left side', svg: (
-                  <svg viewBox="0 0 60 40" className="w-full h-10">
-                    <rect x="18" y="8" width="34" height="26" fill="#334155" stroke="#64748b" strokeWidth="1.5" rx="2"/>
-                    <rect x="2" y="16" width="16" height="18" fill="#475569" stroke="#64748b" strokeWidth="1.5" rx="1"/>
-                    <line x1="2" y1="22" x2="18" y2="22" stroke="#94a3b8" strokeWidth="1"/>
-                    <rect x="28" y="28" width="8" height="6" fill="#f59e0b" rx="1"/>
-                    <text x="30" y="6" textAnchor="middle" fontSize="5" fill="#94a3b8">STREET</text>
-                  </svg>
-                )},
-                { id: rotationToSide(rotation, 90), label: 'Right side', svg: (
-                  <svg viewBox="0 0 60 40" className="w-full h-10">
-                    <rect x="8" y="8" width="34" height="26" fill="#334155" stroke="#64748b" strokeWidth="1.5" rx="2"/>
-                    <rect x="42" y="16" width="16" height="18" fill="#475569" stroke="#64748b" strokeWidth="1.5" rx="1"/>
-                    <line x1="42" y1="22" x2="58" y2="22" stroke="#94a3b8" strokeWidth="1"/>
-                    <rect x="22" y="28" width="8" height="6" fill="#f59e0b" rx="1"/>
-                    <text x="30" y="6" textAnchor="middle" fontSize="5" fill="#94a3b8">STREET</text>
-                  </svg>
-                )},
-                { id: rotationToSide(rotation, 180), label: 'Rear / back', svg: (
-                  <svg viewBox="0 0 60 40" className="w-full h-10">
-                    <rect x="10" y="4" width="40" height="18" fill="#334155" stroke="#64748b" strokeWidth="1.5" rx="2"/>
-                    <rect x="18" y="22" width="24" height="14" fill="#475569" stroke="#64748b" strokeWidth="1.5" rx="1"/>
-                    <line x1="24" y1="22" x2="24" y2="36" stroke="#94a3b8" strokeWidth="1"/>
-                    <line x1="36" y1="22" x2="36" y2="36" stroke="#94a3b8" strokeWidth="1"/>
-                    <rect x="26" y="16" width="8" height="6" fill="#f59e0b" rx="1"/>
-                    <text x="30" y="42" textAnchor="middle" fontSize="5" fill="#94a3b8">STREET</text>
-                  </svg>
-                )},
-              ].map(opt => (
-                <button key={opt.id} onClick={() => setGarageSide(opt.id)}
-                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${
-                    garageSide === opt.id
-                      ? 'border-amber-500 bg-amber-500/10'
-                      : 'border-stone-700 bg-stone-800 hover:border-stone-500'
-                  }`}>
-                  {opt.svg}
-                  <span className={`text-xs font-medium ${garageSide === opt.id ? 'text-amber-400' : 'text-stone-300'}`}>
-                    {opt.label}
-                  </span>
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       )}
 
-      {/* Flags */}
-      {substep === 'flags' && (
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">Lot characteristics <span className="normal-case text-stone-500">(optional)</span></label>
-            <div className="flex flex-wrap gap-2">
-              {LOT_FLAGS.map(f => (
-                <button key={f.id}
-                  onClick={() => setFlags(prev => prev.includes(f.id) ? prev.filter(x=>x!==f.id) : [...prev,f.id])}
-                  className={`py-1.5 px-3 rounded-lg border text-sm transition-all ${
-                    flags.includes(f.id) ? 'border-amber-500 bg-amber-500/10 text-amber-400' : 'border-stone-700 bg-stone-800 text-stone-300 hover:border-stone-600'
-                  }`}>{f.label}</button>
-              ))}
-            </div>
-          </div>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)}
-            placeholder="Views, easements, septic, access road..."
-            rows={2}
-            className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-white placeholder-stone-500 text-sm focus:outline-none focus:border-amber-500 resize-none"/>
+      {/* Street Facing */}
+      <div>
+        <label className="text-sm text-gray-300 block mb-2">Street Facing (front of house faces)</label>
+        <div className="grid grid-cols-4 gap-2">
+          {STREET_FACING.map(d => (
+            <button key={d.value} onClick={() => handleStreetFacing(d.value)}
+              className={`py-2.5 rounded text-sm font-medium transition ${
+                streetDir === d.value ? 'bg-[#C4A35A] text-black' : 'bg-white/10 text-white hover:bg-white/20'
+              }`}>
+              {d.label}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
-      <button onClick={handleNext} disabled={!canProceed}
-        className={`w-full py-4 rounded-xl font-semibold text-base transition-all ${
-          canProceed ? 'bg-amber-500 hover:bg-amber-400 text-black' : 'bg-stone-800 text-stone-600 cursor-not-allowed'
-        }`}>
-        {canProceed ? 'Continue →' : lotData.lot_address ? 'Select driveway direction to continue' : 'Enter your address to continue'}
-      </button>
+      {/* Master Suite Location */}
+      <div>
+        <label className="text-sm text-gray-300 block mb-2">Master Suite Location</label>
+        <div className="grid grid-cols-2 gap-2">
+          {MASTER_LOCATIONS.map(m => (
+            <button key={m.value} onClick={() => onChange({ masterLocation: m.value })}
+              className={`py-2.5 rounded text-sm font-medium transition ${
+                state.masterLocation === m.value ? 'bg-[#C4A35A] text-black' : 'bg-white/10 text-white hover:bg-white/20'
+              }`}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Lot Flags */}
+      <div>
+        <label className="block text-xs text-stone-400 mb-2 uppercase tracking-wider">Lot characteristics <span className="normal-case text-stone-500">(optional)</span></label>
+        <div className="flex flex-wrap gap-2">
+          {LOT_FLAGS.map(f => (
+            <button key={f.id}
+              onClick={() => setFlags(prev => prev.includes(f.id) ? prev.filter(x=>x!==f.id) : [...prev,f.id])}
+              className={`py-1.5 px-3 rounded-lg border text-sm transition-all ${
+                flags.includes(f.id) ? 'border-amber-500 bg-amber-500/10 text-amber-400' : 'border-stone-700 bg-stone-800 text-stone-300 hover:border-stone-600'
+              }`}>{f.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Notes */}
+      <textarea value={notes} onChange={e => setNotes(e.target.value)}
+        placeholder="Views, easements, septic, access road..."
+        rows={2}
+        className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-white placeholder-stone-500 text-sm focus:outline-none focus:border-amber-500 resize-none"/>
     </div>
   )
 }

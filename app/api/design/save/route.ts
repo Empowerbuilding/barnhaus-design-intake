@@ -8,51 +8,40 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { sessionId, step, style, sqft, bedrooms, bathrooms, shape,
-    streetFacing, viewFacing, priorities, garageCount, garageAttachment, features } = body
+  const { sessionId, step, sqft, bedrooms, bathrooms, shape,
+    streetFacing, garageCount, garageAttachment, garageOrientation,
+    mainRoofStyle, roofPitch, greatRoomVaulted, ceilingHeight,
+    masterLocation, desiredRooms, porchSelection,
+    firstName, lastName, email, phone } = body
 
-  // Map new flow fields → existing design_intake_submissions columns
   const garageCarMap: Record<string, string> = {
     'none': '0', '1-car': '1', '2-car': '2', '3-car': '3'
   }
 
   const record: Record<string, unknown> = {
     status: 'in_progress',
-    aesthetic_style: style || null,
+    name: firstName && lastName ? `${firstName} ${lastName}`.trim() : null,
+    email: email || null,
+    phone: phone || null,
     living: sqft ? String(sqft) : null,
     bedrooms: bedrooms || null,
     bathrooms: bathrooms || null,
+    stories: body.stories || null,
     house_shape: shape || null,
     pad_direction: streetFacing || null,
+    street_facing: streetFacing || null,
     garage_cars: garageCount ? garageCarMap[garageCount] || null : null,
     garage_type: garageAttachment || null,
-    garage_orientation: body.garageOrientation || null,
-    // Store priorities + features as JSON in additional_items
-    additional_items: JSON.stringify({ step, priorities: priorities || [], features: features || {}, viewFacing }),
+    garage_orientation: garageOrientation || null,
+    main_roof_style: mainRoofStyle || null,
+    roof_pitch: roofPitch || null,
+    great_room_vaulted: greatRoomVaulted ?? null,
+    ceiling_height: ceilingHeight || null,
+    master_location: masterLocation || null,
+    desired_rooms: desiredRooms && desiredRooms.length > 0 ? desiredRooms.join(',') : null,
+    porch_type: porchSelection || null,
+    additional_items: JSON.stringify({ step, desiredRooms: desiredRooms || [], porchSelection }),
     updated_at: new Date().toISOString(),
-  }
-
-  // Map features to existing columns
-  if (features) {
-    if (features.covered_back_porch || features.covered_front_porch) {
-      const porches = []
-      if (features.covered_back_porch) porches.push('back')
-      if (features.covered_front_porch) porches.push('front')
-      record.porch_locations = porches.join(',')
-    }
-    if (features.vaulted_great_room) record.great_room_vaulted = true
-    if (features.home_office) {
-      record.desired_rooms = (record.desired_rooms as string || '') + ' home_office'
-    }
-    if (features.media_room) {
-      record.desired_rooms = (record.desired_rooms as string || '') + ' media_room'
-    }
-    if (features.inlaw_suite) {
-      record.desired_rooms = (record.desired_rooms as string || '') + ' inlaw_suite'
-    }
-    if (features.butler_pantry) {
-      record.kitchen_features = 'butler_pantry'
-    }
   }
 
   if (sessionId) {

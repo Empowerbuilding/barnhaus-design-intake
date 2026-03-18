@@ -1,45 +1,26 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { DesignState } from '@/lib/design-types'
 import BubbleDiagram from '@/components/BubbleDiagram'
+import StepContactSize from '@/components/design-flow/StepContactSize'
+import StepShapeGarage from '@/components/design-flow/StepShapeGarage'
+import StepRoomsPorches from '@/components/design-flow/StepRoomsPorches'
+import StepRoof from '@/components/design-flow/StepRoof'
 import StepLot from '@/components/design-flow/StepLot'
-import StepStyle from '@/components/design-flow/StepStyle'
-import StepSize from '@/components/design-flow/StepSize'
-import StepShape from '@/components/design-flow/StepShape'
-import StepPriorities from '@/components/design-flow/StepPriorities'
-import StepGarage from '@/components/design-flow/StepGarage'
-import StepFeatures from '@/components/design-flow/StepFeatures'
-import StepArchitecture from '@/components/design-flow/StepArchitecture'
-import StepMasterSuite from '@/components/design-flow/StepMasterSuite'
-import StepLifestyle from '@/components/design-flow/StepLifestyle'
-import StepContact from '@/components/design-flow/StepContact'
 
-const TOTAL_STEPS = 12
-const BUBBLE_STEP = 11
+const TOTAL_STEPS = 6
+const BUBBLE_STEP = 6
 
-const STEP_LABELS = ['Lot', 'Style', 'Size', 'Shape', 'Priorities', 'Garage', 'Features', 'Master Suite', 'Lifestyle', 'Architecture', 'Room Layout', 'Contact']
+const STEP_LABELS = ['Size & Contact', 'Shape & Garage', 'Rooms & Porches', 'Roof', 'Lot & Orientation', 'Room Layout']
 
-const DEFAULT_PRIORITIES = ['master_privacy', 'open_living', 'outdoor_connection', 'garage_access', 'home_office'] as const
-const initialState: DesignState = { step: 1, priorities: [...DEFAULT_PRIORITIES] as import('@/lib/design-types').Priority[] }
+const initialState: DesignState = { step: 1 }
 
 export default function DesignFlow() {
   const [state, setState] = useState<DesignState>(initialState)
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [zoneMapHistory, setZoneMapHistory] = useState<string[]>([])
-  const [activeView, setActiveView] = useState<'bubbles' | 'zonemap'>('bubbles')
-  const [selectedMapIndex, setSelectedMapIndex] = useState<number>(0)
-  const [bubblePositions, setBubblePositions] = useState<Record<string, { x: number; y: number }>>({})
   const [lastBubbles, setLastBubbles] = useState<{id:string;label:string;x:number;y:number;r:number}[]>([])
-  const [generating, setGenerating] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(true)
-  const [generateTrigger, setGenerateTrigger] = useState(0)
-
-  // Regenerate SVG whenever state changes
-  useEffect(() => {
-    if (state.step >= 2) {
-    }
-  }, [state])
 
   const update = useCallback((patch: Partial<DesignState>) => {
     setState(prev => ({ ...prev, ...patch }))
@@ -48,7 +29,6 @@ export default function DesignFlow() {
   const next = useCallback(async () => {
     const nextStep = Math.min(state.step + 1, TOTAL_STEPS)
     setState(prev => ({ ...prev, step: nextStep }))
-    // Auto-save
     setSaving(true)
     try {
       const res = await fetch('/api/design/save', {
@@ -68,8 +48,7 @@ export default function DesignFlow() {
     setState(prev => ({ ...prev, step: Math.max(prev.step - 1, 1) }))
   }, [])
 
-  const handleSubmit = async (contactInfo: { firstName: string; lastName: string; email: string; phone?: string }) => {
-    update(contactInfo)
+  const handleSubmit = async () => {
     setSaving(true)
     try {
       await fetch('/api/design/submit', {
@@ -77,11 +56,7 @@ export default function DesignFlow() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...state,
-          ...contactInfo,
-          selectedZoneMap: zoneMapHistory[selectedMapIndex] || null,
-          bubblePositions,
           bubbles: lastBubbles,
-          architecture: state.architecture || {},
         }),
       })
       setSubmitted(true)
@@ -89,37 +64,14 @@ export default function DesignFlow() {
     setSaving(false)
   }
 
-  const handleGenerate = async (imageBase64: string, bubbles: {id:string;label:string;x:number;y:number;r:number}[]) => {
-    setLastBubbles(bubbles)
-    setGenerating(true)
-    try {
-      const res = await fetch('/api/generate-floorplan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64, state, bubbles }),
-      })
-      const data = await res.json()
-      if (data.imageUrl) {
-        setZoneMapHistory(prev => { const next = [...prev, data.imageUrl]; setSelectedMapIndex(next.length - 1); return next; })
-        setActiveView('zonemap')
-      }
-    } catch (e) { console.error(e) }
-    setGenerating(false)
-  }
-
   const canNext = (): boolean => {
     switch (state.step) {
-      case 1: return true                                                        // StepLot
-      case 2: return !!state.style                                               // StepStyle
-      case 3: return !!state.sqft && !!state.bedrooms && !!state.bathrooms       // StepSize
-      case 4: return !!state.shape                                               // StepShape
-      case 5: return !!(state.priorities && state.priorities.length === 5)       // StepPriorities
-      case 6: return !!state.garageCount                                         // StepGarage
-      case 7: return true                                                        // StepFeatures
-      case 8: return true                                                        // StepMasterSuite
-      case 9: return true                                                        // StepLifestyle
-      case 10: return true                                                       // StepArchitecture
-      case 11: return true                                                       // Room Layout (bubble diagram)
+      case 1: return !!(state.firstName && state.lastName && state.email?.includes('@') && state.sqft && state.bedrooms && state.bathrooms)
+      case 2: return !!state.shape
+      case 3: return true
+      case 4: return true
+      case 5: return true
+      case 6: return true
       default: return false
     }
   }
@@ -144,6 +96,8 @@ export default function DesignFlow() {
     )
   }
 
+  const isLastStep = state.step === TOTAL_STEPS
+
   return (
     <div className="min-h-screen bg-[#1A1A1A] text-white">
       {/* Header */}
@@ -156,7 +110,7 @@ export default function DesignFlow() {
       <div className="px-6 py-3 bg-[#111]">
         <div className="flex items-center gap-1 mb-1">
           {STEP_LABELS.map((label, i) => (
-            <div key={i} className="flex-1 text-center">
+            <div key={label} className="flex-1 text-center">
               <div
                 className={`h-1 rounded transition-all duration-300 ${
                   i + 1 < state.step ? 'bg-[#C4A35A]' :
@@ -176,146 +130,46 @@ export default function DesignFlow() {
       <div className="flex flex-col lg:flex-row min-h-[calc(100vh-120px)]">
 
         {/* Left: Questions — hidden on mobile, always visible on desktop */}
-        <div className={`hidden lg:flex flex-1 px-6 py-8 flex-col ${state.step !== BUBBLE_STEP ? 'lg:max-w-full' : 'lg:max-w-[55%]'}`}>
+        <div className={`hidden lg:flex flex-1 px-6 py-8 flex-col ${state.step === BUBBLE_STEP ? 'lg:max-w-[55%]' : ''}`}>
           <div className="flex-1">
-            {state.step === 1 && <StepLot state={state} update={update} onNext={next} />}
-            {state.step === 2 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
-            {state.step === 3 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} fullBaths={state.fullBaths} halfBaths={state.halfBaths} bathConfig={state.bathConfig} stories={state.stories} onChange={patch => update(patch)} />}
-            {state.step === 4 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
-            {state.step === 5 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
-            {state.step === 6 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} garageOrientation={state.garageOrientation} onChange={patch => update(patch)} />}
-            {state.step === 7 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
-            {state.step === 8 && <StepMasterSuite value={state.masterSuite || {}} onChange={v => update({ masterSuite: v })} />}
-            {state.step === 9 && <StepLifestyle value={state.lifestyle || {}} onChange={v => update({ lifestyle: v })} />}
-            {state.step === 10 && <StepArchitecture value={state.architecture || {}} shape={state.shape} onChange={v => update({ architecture: v })} />}
-            {state.step === 11 && (
-              <div className="w-full lg:hidden">
+            {state.step === 1 && <StepContactSize state={state} onChange={update} />}
+            {state.step === 2 && <StepShapeGarage state={state} onChange={update} />}
+            {state.step === 3 && <StepRoomsPorches state={state} onChange={update} />}
+            {state.step === 4 && <StepRoof state={state} onChange={update} />}
+            {state.step === 5 && <StepLot state={state} onChange={update} />}
+            {state.step === 6 && (
+              <div>
                 <h2 className="text-2xl font-bold text-white mb-1">Room Layout</h2>
-                <p className="text-stone-400 text-sm mb-4">Drag the bubbles to arrange how your rooms relate to each other. When you're happy, generate a zone map.</p>
-                <div className="relative w-full" style={{height: 500}}>
-                  <BubbleDiagram
-                    state={state}
-                    onPositionsChange={(p) => setBubblePositions(p)}
-                    generatedImageUrl={activeView === 'zonemap' && zoneMapHistory.length > 0 ? zoneMapHistory[selectedMapIndex] : undefined}
-                    onGenerate={handleGenerate}
-                    generating={generating}
-                    generateTrigger={generateTrigger}
-                  />
-                </div>
-                {zoneMapHistory.length > 0 && (
-                  <div className="flex items-center gap-2 mt-3">
-                    <button onClick={() => setActiveView('bubbles')} className={`px-3 py-1.5 rounded text-xs font-medium transition ${activeView==='bubbles'?'bg-[#C4A35A] text-black':'text-gray-400 hover:text-white'}`}>○ Bubbles</button>
-                    <button onClick={() => setActiveView('zonemap')} className={`px-3 py-1.5 rounded text-xs font-medium transition ${activeView==='zonemap'?'bg-[#C4A35A] text-black':'text-gray-400 hover:text-white'}`}>⊞ Zone Map</button>
-                  </div>
-                )}
-                <button onClick={() => setGenerateTrigger(t => t + 1)} disabled={generating}
-                  className="mt-3 w-full py-3 border border-[#C4A35A] text-[#C4A35A] rounded-lg font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
-                  {generating ? <span className="inline-block w-4 h-4 border-2 border-[#C4A35A] border-t-transparent rounded-full animate-spin"/> : '✦'}
-                  {generating ? 'Generating...' : 'Generate Zone Map'}
-                </button>
+                <p className="text-stone-400 text-sm mb-4">Drag bubbles to arrange rooms. Click a bubble then drag corner handles to resize.</p>
               </div>
             )}
-            {state.step === 12 && <StepContact onSubmit={handleSubmit} saving={saving} />}
           </div>
-          {state.step < 12 && (
-            <div className="flex gap-3 mt-8">
-              {state.step > 1 && (
-                <button onClick={back} className="px-6 py-3 border border-white/20 text-white rounded hover:bg-white/10 transition text-sm">← Back</button>
-              )}
+          <div className="flex gap-3 mt-8">
+            {state.step > 1 && (
+              <button onClick={back} className="px-6 py-3 border border-white/20 text-white rounded hover:bg-white/10 transition text-sm">← Back</button>
+            )}
+            {isLastStep ? (
+              <button onClick={handleSubmit} disabled={saving}
+                className="flex-1 px-6 py-3 bg-[#C4A35A] text-black font-semibold rounded hover:bg-[#D4B36A] disabled:opacity-40 disabled:cursor-not-allowed transition text-sm">
+                {saving ? 'Submitting...' : 'Submit Design →'}
+              </button>
+            ) : (
               <button onClick={next} disabled={!canNext() || saving}
                 className="flex-1 px-6 py-3 bg-[#C4A35A] text-black font-semibold rounded hover:bg-[#D4B36A] disabled:opacity-40 disabled:cursor-not-allowed transition text-sm">
                 {saving ? 'Saving...' : 'Next →'}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Bubble Diagram — only shown on step 11 */}
+        {/* Bubble Diagram — only shown on step 6 */}
         <div className={`relative flex-1 lg:w-[45%] bg-[#0D0D0D] lg:sticky lg:top-0 lg:h-screen flex flex-col lg:p-6 lg:border-l lg:border-white/10 ${state.step !== BUBBLE_STEP ? 'hidden lg:hidden' : ''}`}>
-          {/* Toggle + History */}
-          {zoneMapHistory.length > 0 && (
-            <div className="hidden lg:flex items-center justify-between mb-3 px-1">
-              <div className="flex bg-white/5 rounded-lg p-0.5 gap-0.5">
-                <button onClick={() => setActiveView('bubbles')}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition ${activeView === 'bubbles' ? 'bg-[#C4A35A] text-black' : 'text-gray-400 hover:text-white'}`}>
-                  ○ Bubbles
-                </button>
-                <button onClick={() => setActiveView('zonemap')}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition ${activeView === 'zonemap' ? 'bg-[#C4A35A] text-black' : 'text-gray-400 hover:text-white'}`}>
-                  ⊞ Zone Map
-                </button>
-              </div>
-              {zoneMapHistory.length > 1 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Pick one:</span>
-                  {zoneMapHistory.map((_, i) => (
-                    <button key={i} onClick={() => { setSelectedMapIndex(i); setActiveView('zonemap') }}
-                      className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition ${i === selectedMapIndex ? 'bg-[#C4A35A] text-black' : 'bg-white/20 text-gray-400 hover:bg-white/40'}`}
-                      title={`Zone Map ${i + 1}`}>
-                      {i === selectedMapIndex ? '✓' : i + 1}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {!zoneMapHistory.length && <p className="hidden lg:block text-xs text-gray-600 uppercase tracking-widest mb-4 text-center">Arrange Your Rooms</p>}
+          <p className="hidden lg:block text-xs text-gray-600 uppercase tracking-widest mb-4 text-center">Arrange Your Rooms</p>
           <div className="relative flex-1">
             <BubbleDiagram
               state={state}
-              onPositionsChange={(p) => setBubblePositions(p)}
-              generatedImageUrl={activeView === 'zonemap' && zoneMapHistory.length > 0 ? zoneMapHistory[selectedMapIndex] : undefined}
-              onGenerate={handleGenerate}
-              generating={generating}
-              generateTrigger={generateTrigger}
+              onBubblesChange={setLastBubbles}
             />
-            {/* Mobile toggle */}
-          {zoneMapHistory.length > 0 && (
-            <div className="lg:hidden flex items-center justify-between px-3 pt-2 pb-1">
-              <div className="flex bg-white/5 rounded-lg p-0.5 gap-0.5">
-                <button onClick={() => setActiveView('bubbles')}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition ${activeView === 'bubbles' ? 'bg-[#C4A35A] text-black' : 'text-gray-400'}`}>
-                  ○ Bubbles
-                </button>
-                <button onClick={() => setActiveView('zonemap')}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition ${activeView === 'zonemap' ? 'bg-[#C4A35A] text-black' : 'text-gray-400'}`}>
-                  ⊞ Zone Map
-                </button>
-              </div>
-              {zoneMapHistory.length > 1 && (
-                <div className="flex items-center gap-1.5 pr-1">
-                  <span className="text-xs text-gray-500">Pick:</span>
-                  {zoneMapHistory.map((_, i) => (
-                    <button key={i} onClick={() => { setSelectedMapIndex(i); setActiveView('zonemap') }}
-                      className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition ${i === selectedMapIndex ? 'bg-[#C4A35A] text-black' : 'bg-white/20 text-gray-400'}`}>
-                      {i === selectedMapIndex ? '✓' : i + 1}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {generating && (
-              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-lg z-10">
-                <span className="w-10 h-10 border-4 border-[#C4A35A] border-t-transparent rounded-full animate-spin mb-4"/>
-                <p className="text-[#C4A35A] font-semibold text-sm tracking-wide">Generating Zone Map...</p>
-                <p className="text-gray-400 text-xs mt-1">This takes about 20 seconds</p>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile floating buttons */}
-          <div className={`lg:hidden fixed bottom-6 left-0 right-0 flex justify-between px-4 pointer-events-none z-[60] transition-opacity ${sheetOpen || state.step !== BUBBLE_STEP ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-            <button onClick={() => setSheetOpen(true)}
-              className="pointer-events-auto bg-[#C4A35A] text-black font-bold px-5 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2">
-              ⚙ Design Options
-              <span className="bg-black/20 text-black text-xs px-1.5 py-0.5 rounded-full">{state.step}/{TOTAL_STEPS}</span>
-            </button>
-            <button onClick={() => setGenerateTrigger(t => t + 1)}
-              disabled={generating}
-              className="pointer-events-auto bg-[#1A1A1A] border border-[#C4A35A] text-[#C4A35A] font-bold px-4 py-3 rounded-full shadow-2xl text-sm disabled:opacity-50 flex items-center gap-2">
-              {generating ? <span className="inline-block w-3 h-3 border-2 border-[#C4A35A] border-t-transparent rounded-full animate-spin"/> : '✦'} {generating ? 'Generating...' : 'Zone Map'}
-            </button>
           </div>
         </div>
       </div>
@@ -330,48 +184,51 @@ export default function DesignFlow() {
               <button onClick={() => setSheetOpen(false)} className="text-gray-400 text-xl leading-none">✕</button>
             </div>
             <div className="px-5 py-6">
-              {state.step === 1 && <StepLot state={state} update={update} onNext={next} />}
-              {state.step === 2 && <StepStyle value={state.style} onChange={v => update({ style: v })} />}
-              {state.step === 3 && <StepSize sqft={state.sqft} bedrooms={state.bedrooms} fullBaths={state.fullBaths} halfBaths={state.fullBaths} bathConfig={state.bathConfig} stories={state.stories} onChange={patch => update(patch)} />}
-              {state.step === 4 && <StepShape value={state.shape} onChange={v => update({ shape: v })} />}
-              {state.step === 5 && <StepPriorities value={state.priorities || []} onChange={v => update({ priorities: v })} />}
-              {state.step === 6 && <StepGarage garageCount={state.garageCount} garageAttachment={state.garageAttachment} garageOrientation={state.garageOrientation} onChange={patch => update(patch)} />}
-              {state.step === 7 && <StepFeatures value={state.features || {}} onChange={v => update({ features: v })} />}
-              {state.step === 8 && <StepMasterSuite value={state.masterSuite || {}} onChange={v => update({ masterSuite: v })} />}
-              {state.step === 9 && <StepLifestyle value={state.lifestyle || {}} onChange={v => update({ lifestyle: v })} />}
-              {state.step === 10 && <StepArchitecture value={state.architecture || {}} shape={state.shape} onChange={v => update({ architecture: v })} />}
-              {state.step === 11 && (
+              {state.step === 1 && <StepContactSize state={state} onChange={update} />}
+              {state.step === 2 && <StepShapeGarage state={state} onChange={update} />}
+              {state.step === 3 && <StepRoomsPorches state={state} onChange={update} />}
+              {state.step === 4 && <StepRoof state={state} onChange={update} />}
+              {state.step === 5 && <StepLot state={state} onChange={update} />}
+              {state.step === 6 && (
                 <div>
-                  <p className="text-gray-400 text-sm mb-3">Drag the bubbles to arrange your rooms, then generate a zone map.</p>
+                  <p className="text-gray-400 text-sm mb-3">Drag bubbles to arrange rooms. Click a bubble then drag corners to resize.</p>
                   <div className="relative w-full" style={{height:360}}>
-                    <BubbleDiagram state={state} onPositionsChange={p => setBubblePositions(p)}
-                      generatedImageUrl={activeView==='zonemap'&&zoneMapHistory.length>0?zoneMapHistory[selectedMapIndex]:undefined}
-                      onGenerate={handleGenerate} generating={generating} generateTrigger={generateTrigger}/>
+                    <BubbleDiagram state={state} onBubblesChange={setLastBubbles} />
                   </div>
-                  <button onClick={() => setGenerateTrigger(t=>t+1)} disabled={generating}
-                    className="mt-3 w-full py-3 border border-[#C4A35A] text-[#C4A35A] rounded-lg font-semibold text-sm disabled:opacity-50">
-                    {generating ? 'Generating...' : '✦ Generate Zone Map'}
-                  </button>
                 </div>
               )}
-              {state.step === 12 && <StepContact onSubmit={handleSubmit} saving={saving} />}
             </div>
-            {state.step < 12 && (
-              <div className="sticky bottom-0 bg-[#1A1A1A] border-t border-white/10 px-5 py-4 flex gap-3">
-                {state.step > 1 && (
-                  <button onClick={() => { back(); setSheetOpen(false) }}
-                    className="px-5 py-3 border border-white/20 text-white rounded-lg hover:bg-white/10 transition text-sm">← Back</button>
-                )}
+            <div className="sticky bottom-0 bg-[#1A1A1A] border-t border-white/10 px-5 py-4 flex gap-3">
+              {state.step > 1 && (
+                <button onClick={() => { back(); setSheetOpen(false) }}
+                  className="px-5 py-3 border border-white/20 text-white rounded-lg hover:bg-white/10 transition text-sm">← Back</button>
+              )}
+              {isLastStep ? (
+                <button onClick={() => { handleSubmit(); setSheetOpen(false) }}
+                  disabled={saving}
+                  className="flex-1 py-3 bg-[#C4A35A] text-black font-semibold rounded-lg disabled:opacity-40 transition text-sm">
+                  {saving ? 'Submitting...' : 'Submit Design →'}
+                </button>
+              ) : (
                 <button onClick={() => { if (canNext()) { next(); setSheetOpen(false) } }}
                   disabled={!canNext() || saving}
                   className="flex-1 py-3 bg-[#C4A35A] text-black font-semibold rounded-lg disabled:opacity-40 transition text-sm">
-                  {saving ? 'Saving...' : state.step === 11 ? 'Almost done →' : 'Next →'}
+                  {saving ? 'Saving...' : 'Next →'}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      {/* Mobile floating button when sheet is closed */}
+      <div className={`lg:hidden fixed bottom-6 left-0 right-0 flex justify-center px-4 pointer-events-none z-[60] transition-opacity ${sheetOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <button onClick={() => setSheetOpen(true)}
+          className="pointer-events-auto bg-[#C4A35A] text-black font-bold px-6 py-3 rounded-full shadow-2xl text-sm flex items-center gap-2">
+          ⚙ Design Options
+          <span className="bg-black/20 text-black text-xs px-1.5 py-0.5 rounded-full">{state.step}/{TOTAL_STEPS}</span>
+        </button>
+      </div>
     </div>
   )
 }
