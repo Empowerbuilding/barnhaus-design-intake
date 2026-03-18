@@ -107,7 +107,8 @@ export interface DesignState {
   greatRoomVaulted?: boolean
   ceilingHeight?: number
   porchSelection?: PorchSelection
-  porchSF?: number  // approx porch SF selected by user
+  frontPorchSF?: number  // front porch SF
+  backPorchSF?: number   // back porch SF
   desiredRooms?: string[]
   masterLocation?: MasterLocation
 }
