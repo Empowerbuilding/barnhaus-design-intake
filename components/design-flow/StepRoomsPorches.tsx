@@ -32,8 +32,6 @@ type Props = {
 
 export default function StepRoomsPorches({ state, onChange }: Props) {
   const rooms = state.desiredRooms || []
-  const hasPorch = state.porchSelection && state.porchSelection !== 'none'
-
   const toggleRoom = (id: string) => {
     const next = rooms.includes(id) ? rooms.filter(r => r !== id) : [...rooms, id]
     onChange({ desiredRooms: next })
