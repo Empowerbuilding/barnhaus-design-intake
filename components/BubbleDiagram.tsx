@@ -245,7 +245,7 @@ export default function BubbleDiagram({ state, onBubblesChange }: Props) {
 
   return (
     <div className="w-full select-none">
-      <p className="text-xs text-gray-400 mb-2 text-center">Drag bubble to <span class=\"text-[#C4A35A]\">move</span> · Drag corner dots to <span class=\"text-[#C4A35A]\">resize</span></p>
+      <p className="text-xs text-gray-400 mb-2 text-center">Drag to <span className="text-[#C4A35A]">move</span> · Drag corner dots to <span className="text-[#C4A35A]">resize</span></p>
       <svg ref={svgRef} width="100%" viewBox={`0 0 ${VP_W} ${VP_H}`}
         style={{ cursor: dragRef.current || resizeRef.current ? 'grabbing' : 'default', touchAction: 'none' }}
         onClick={onSvgClick}>
