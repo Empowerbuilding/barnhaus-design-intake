@@ -101,6 +101,9 @@ export interface DesignState {
   mainRoofStyle?: RoofStyle
   secondaryRoofStyle?: RoofStyle  // for wings, garage, porch
   roofPitch?: RoofPitch
+  wallHeight?: number        // exterior wall plate height in ft (8/9/10/11/12/14/16)
+  soffitDepth?: number       // roof overhang/soffit depth in inches (0/12/18/24/36)
+  hasBalcony?: boolean       // 2nd story balcony/patio
   greatRoomVaulted?: boolean
   ceilingHeight?: number
   porchSelection?: PorchSelection
