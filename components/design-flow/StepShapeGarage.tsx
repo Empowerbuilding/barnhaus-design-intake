@@ -2,10 +2,16 @@
 import { Shape, GarageCount, GarageAttachment, DesignState } from '@/lib/design-types'
 
 const SHAPES: { value: Shape; label: string; desc: string; path: string }[] = [
-  { value: 'rectangle', label: 'Rectangle', desc: 'Classic ranch', path: 'M10,20 L90,20 L90,75 L10,75 Z' },
-  { value: 'l-shape', label: 'L-Shape', desc: 'Extends with a wing', path: 'M10,20 L90,20 L90,50 L55,50 L55,80 L10,80 Z' },
-  { value: 't-shape', label: 'T-Shape', desc: 'Central with wings', path: 'M30,15 L70,15 L70,45 L90,45 L90,80 L10,80 L10,45 L30,45 Z' },
-  { value: 'h-shape', label: 'H-Shape', desc: 'Two wings + bridge', path: 'M10,15 L35,15 L35,40 L65,40 L65,15 L90,15 L90,80 L65,80 L65,58 L35,58 L35,80 L10,80 Z' },
+  { value: 'rectangle',       label: 'Rectangle',       desc: 'Classic ranch',          path: 'M10,20 L90,20 L90,75 L10,75 Z' },
+  { value: 'l-shape',         label: 'L-Shape',          desc: 'Main bar + rear wing',   path: 'M10,20 L90,20 L90,50 L55,50 L55,80 L10,80 Z' },
+  { value: 'asymmetric-l',    label: 'Asymmetric L',     desc: 'Long bar + short wing',  path: 'M10,20 L90,20 L90,45 L70,45 L70,80 L10,80 Z' },
+  { value: 't-shape',         label: 'T-Shape',          desc: 'Central bar + two wings', path: 'M30,15 L70,15 L70,45 L90,45 L90,80 L10,80 L10,45 L30,45 Z' },
+  { value: 'h-shape',         label: 'H-Shape',          desc: 'Two wings + bridge',     path: 'M10,15 L35,15 L35,40 L65,40 L65,15 L90,15 L90,80 L65,80 L65,58 L35,58 L35,80 L10,80 Z' },
+  { value: 'u-shape',         label: 'U-Shape',          desc: 'Open rear courtyard',    path: 'M10,15 L35,15 L35,75 L65,75 L65,15 L90,15 L90,85 L10,85 Z' },
+  { value: 'dogtrot',         label: 'Dogtrot',          desc: 'Two bars + breezeway',   path: 'M10,20 L42,20 L42,75 L10,75 Z M58,20 L90,20 L90,75 L58,75 Z M42,40 L58,40 L58,55 L42,55 Z' },
+  { value: 'z-shape',         label: 'Z-Shape',          desc: 'Offset bars, sloped lots', path: 'M10,15 L65,15 L65,45 L90,45 L90,80 L35,80 L35,50 L10,50 Z' },
+  { value: 'barndominium-bar', label: 'Barn Bar',         desc: 'Long narrow single span', path: 'M5,30 L95,30 L95,65 L5,65 Z' },
+  { value: 'courtyard',       label: 'Courtyard',        desc: 'Four sides, open center', path: 'M10,10 L90,10 L90,90 L10,90 Z M30,30 L70,30 L70,70 L30,70 Z' },
 ]
 
 const GARAGE_CARS: { value: GarageCount; label: string }[] = [
@@ -36,7 +42,7 @@ export default function StepShapeGarage({ state, onChange }: Props) {
       {/* Shape */}
       <div className="mb-8">
         <label className="text-sm text-gray-300 block mb-3">Footprint Shape</label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {SHAPES.map(s => (
             <button key={s.value} onClick={() => onChange({ shape: s.value })}
               className={`p-3 rounded-lg border-2 text-center transition-all ${
