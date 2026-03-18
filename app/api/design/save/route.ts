@@ -13,7 +13,6 @@ export async function POST(req: NextRequest) {
     mainRoofStyle, roofPitch, greatRoomVaulted, ceilingHeight,
     masterLocation, desiredRooms, porchSelection, porchSF,
     secondaryRoofStyle, wallHeight, soffitDepth, hasBalcony,
-    garageCount, garageAttachment,
     firstName, lastName, email, phone } = body
 
   const garageCarMap: Record<string, string> = {
