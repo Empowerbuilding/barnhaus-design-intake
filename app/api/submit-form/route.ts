@@ -677,6 +677,37 @@ export async function POST(request: Request) {
       }).catch(e => console.error('Webhook failed:', e));
     }
 
+    // Post to #lead-alerts in Vanessa Discord (non-blocking)
+    const vanessaToken = process.env.VANESSA_DISCORD_TOKEN
+    if (vanessaToken) {
+      const sqft = (payload.living_sf || '?') + ' SF'
+      const style = (payload.aesthetic_style || '').replace(/-/g, ' ') || 'Not specified'
+      const budget = payload.budget || '—'
+      const beds = payload.bedrooms || '?'
+      const baths = payload.full_baths || '?'
+      const stories = payload.stories === 'two' ? '2 story' : '1 story'
+
+      const msg = [
+        '🏠 **New Design Concierge Lead — Follow Up Now**',
+        '',
+        `**Name:** ${payload.client_name || 'Unknown'}`,
+        `**Email:** ${payload.client_email || '—'}`,
+        `**Phone:** ${payload.client_phone || '—'}`,
+        `**Budget:** ${budget}`,
+        `**Size:** ${sqft} | ${stories} | ${beds}bd / ${baths}ba`,
+        `**Style:** ${style}`,
+      ].join('\n')
+
+      fetch('https://discord.com/api/v10/channels/1482243978156834920/messages', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bot ${vanessaToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: msg }),
+      }).catch(() => {})
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Design brief submitted successfully!',

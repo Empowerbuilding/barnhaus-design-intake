@@ -102,6 +102,41 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({ sessionId: submissionId, ...record, ...body }),
     }).catch(() => {})
 
+    // Post to #lead-alerts in Vanessa Discord (non-blocking)
+    const vanessaToken = process.env.VANESSA_DISCORD_TOKEN
+    if (vanessaToken) {
+      const name = `${firstName} ${lastName}`.trim() || 'Unknown'
+      const sqft = (record.sqft || record.living || '?') + ' SF'
+      const style = (record.aesthetic_style as string || '').replace(/-/g, ' ') || 'Not specified'
+      const budget = (record.construction_budget as string) || '—'
+      const location = (record.lot_address as string) || (record.lot_state as string) || '—'
+      const beds = record.bedrooms || '?'
+      const baths = record.full_baths || record.bathrooms || '?'
+      const landStatus = record.lot_address ? 'Has land' : 'Looking for land'
+
+      const msg = [
+        '🏠 **New Design Concierge Lead — Follow Up Now**',
+        '',
+        `**Name:** ${name}`,
+        `**Email:** ${email}`,
+        `**Phone:** ${phone || '—'}`,
+        `**Location:** ${location}`,
+        `**Budget:** ${budget}`,
+        `**Size:** ${sqft} | ${beds}bd / ${baths}ba`,
+        `**Style:** ${style}`,
+        `**Land:** ${landStatus}`,
+      ].join('\n')
+
+      fetch(`https://discord.com/api/v10/channels/1482243978156834920/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bot ${vanessaToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: msg }),
+      }).catch(() => {})
+    }
+
     return NextResponse.json({ ok: true, id: submissionId })
   } catch (error) {
     console.error('Submit error:', error)
